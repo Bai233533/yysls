@@ -242,10 +242,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   addMember: (data) =>
     set((state) => {
-      const members = [...state.members, data as Member];
+      // 先分配临时 id，确保新成员可以立即点击/拖拽
+      const tempId = Date.now();
+      const member = { ...data, id: tempId } as Member;
+      const members = [...state.members, member];
       saveLocal(members);
       // Async save to cloud, then re-sync to get real IDs
-      const dbData = toDB(data as Member);
+      const dbData = toDB(member);
       db.createMember(dbData).then(() => {
         db.fetchAll().then((cloudMembers) => {
           const synced = cloudMembers.map(fromDB);

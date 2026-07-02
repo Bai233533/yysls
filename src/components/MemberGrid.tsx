@@ -29,11 +29,18 @@ export default function MemberGrid({ members, currentPage }: MemberGridProps) {
 
   // 初始化时直接展示，无动画
   const isInitial = useRef(true);
+  const prevMembersRef = useRef(members);
   useEffect(() => {
     if (isInitial.current) {
       isInitial.current = false;
+      prevMembersRef.current = members;
       setDisplayMembers(members);
       return;
+    }
+    // 非翻页场景（编辑/新增成员时），直接同步更新显示数据
+    if (prevMembersRef.current !== members) {
+      prevMembersRef.current = members;
+      setDisplayMembers(members);
     }
   }, [members]);
 
