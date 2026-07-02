@@ -1,4 +1,5 @@
 import { Volume2, PenTool } from "lucide-react";
+import { useEffect } from "react";
 import Navbar from "../components/Navbar";
 import HeroLogo from "../components/HeroLogo";
 import MemberGrid from "../components/MemberGrid";
@@ -6,10 +7,16 @@ import Pagination from "../components/Pagination";
 import MemberDetailModal from "../components/MemberDetailModal";
 import EditModal from "../components/EditModal";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
+import GitHubSync from "../components/GitHubSync";
 import { useStore } from "../store/useStore";
 
 export default function HomePage() {
-  const { members, currentPage, membersPerPage, setCurrentPage, setSelectedMember, setAddingMember } = useStore();
+  const { members, currentPage, membersPerPage, setCurrentPage, setSelectedMember, setAddingMember, syncFromGitHub, githubToken } = useStore();
+
+  // Auto-sync from GitHub on page load if token exists
+  useEffect(() => {
+    if (githubToken) syncFromGitHub();
+  }, []); // eslint-disable-line
   const totalPages = Math.ceil(members.length / membersPerPage);
   const paginatedMembers = members.slice(
     (currentPage - 1) * membersPerPage,
@@ -131,6 +138,7 @@ export default function HomePage() {
       <MemberDetailModal />
       <EditModal />
       <DeleteConfirmDialog />
+      <GitHubSync />
     </div>
   );
 }
