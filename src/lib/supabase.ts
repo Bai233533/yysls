@@ -49,7 +49,7 @@ export async function createMember(member: Omit<SupabaseMember, "id" | "created_
 }
 
 // Update a member
-export async function updateMember(id: number, data: Partial<Omit<SupabaseMember, "id" | "created_at">>): Promise<boolean> {
+export async function updateMember(id: number, data: Record<string, unknown>): Promise<boolean> {
   const { error } = await supabase
     .from("member")
     .update(data)

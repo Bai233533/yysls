@@ -135,8 +135,15 @@ export const useStore = create<AppState>((set) => ({
     set((state) => {
       const members = state.members.map((m) => (m.id === id ? { ...m, ...data } : m));
       saveLocal(members);
-      // Async save to cloud
-      db.updateMember(id, toDB({ ...data, id } as Member)).catch(() => {});
+      // Async save to cloud - only send changed fields
+      const dbData: Record<string, unknown> = {};
+      if (data.name !== undefined) dbData.name = data.name;
+      if (data.role !== undefined) dbData.role = data.role;
+      if (data.avatarUrl !== undefined) dbData.avatar_url = data.avatarUrl;
+      if (data.detailUrl !== undefined) dbData.detail_url = data.detailUrl;
+      if (data.title !== undefined) dbData.title = data.title;
+      if (data.description !== undefined) dbData.description = data.description;
+      db.updateMember(id, dbData).catch(() => {});
       return { members };
     }),
 
