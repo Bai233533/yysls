@@ -114,20 +114,17 @@ export const useStore = create<AppState>((set) => ({
 
   addMember: (data) =>
     set((state) => {
-      const dbData = toDB(data as Member);
-      // Async save to cloud
-      db.createMember(dbData).then((newId) => {
-        if (newId) {
-          // Update local with the real ID from cloud
-          const members = useStore.getState().members.map((m) =>
-            m.id === data.id ? { ...m, id: newId } : m
-          );
-          saveLocal(members);
-          useStore.setState({ members });
-        }
-      });
       const members = [...state.members, data as Member];
       saveLocal(members);
+      // Async save to cloud, then re-sync to get real IDs
+      const dbData = toDB(data as Member);
+      db.createMember(dbData).then(() => {
+        db.fetchAll().then((cloudMembers) => {
+          const synced = cloudMembers.map(fromDB);
+          useStore.setState({ members: synced });
+          saveLocal(synced);
+        });
+      });
       return { members, addingMember: false };
     }),
 
