@@ -1,17 +1,20 @@
-import { Volume2, PenTool } from "lucide-react";
-import { useEffect } from "react";
+import { PenTool } from "lucide-react";
+import { useEffect, useState } from "react";
 import Navbar from "../components/Navbar";
 import HeroLogo from "../components/HeroLogo";
+import PhotoWall from "../components/PhotoWall";
 import MemberGrid from "../components/MemberGrid";
 import Pagination from "../components/Pagination";
 import MemberDetailModal from "../components/MemberDetailModal";
 import EditModal from "../components/EditModal";
 import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import GitHubSync from "../components/GitHubSync";
+import BackgroundPicker from "../components/BackgroundPicker";
 import { useStore } from "../store/useStore";
 
 export default function HomePage() {
-  const { members, currentPage, membersPerPage, setCurrentPage, setSelectedMember, setAddingMember, syncFromCloud } = useStore();
+  const { members, currentPage, membersPerPage, setCurrentPage, setSelectedMember, setAddingMember, syncFromCloud, heroBackground } = useStore();
+  const [showBgPicker, setShowBgPicker] = useState(false);
 
   // Auto-sync from cloud on page load
   useEffect(() => {
@@ -26,15 +29,15 @@ export default function HomePage() {
 
   return (
     <div className="relative min-h-screen w-full bg-ink-900">
-      <Navbar />
+      <Navbar onOpenBackground={() => setShowBgPicker(true)} />
 
       {/* ===== SECTION: Hero ===== */}
       <section id="hero" className="relative min-h-screen w-full flex flex-col justify-center items-center overflow-hidden">
         {/* Ink wash mountain background */}
         <div className="absolute inset-0 z-0">
-          <div className="w-full h-full bg-cover bg-center transition-transform duration-1000 scale-105"
+          <div className="w-full h-full bg-cover bg-center transition-all duration-1000 scale-105"
             style={{
-              backgroundImage: "url('https://picsum.photos/seed/inkmountain/1920/1080')",
+              backgroundImage: `url('${heroBackground}')`,
               filter: "sepia(0.3) saturate(0.7) brightness(0.4) contrast(1.1)",
             }}
           />
@@ -57,13 +60,6 @@ export default function HomePage() {
               "展示各流派咸鱼大才，摸鱼我们是认真的！"
             </p>
           </div>
-        </div>
-
-        {/* Sound Control */}
-        <div className="fixed top-24 right-10 z-50">
-          <button className="w-10 h-10 rounded-full border border-gold-400/20 flex items-center justify-center text-gold-200/40 hover:text-gold-200 hover:border-gold-400/50 backdrop-blur-md transition-all">
-            <Volume2 size={16} />
-          </button>
         </div>
 
         {/* Auto-scrolling Member Gallery - Ink Scroll Style */}
@@ -120,6 +116,9 @@ export default function HomePage() {
         </main>
       </section>
 
+      {/* ===== SECTION: Photo Wall (3D 球形照片墙) ===== */}
+      <PhotoWall />
+
       {/* ===== SECTION: Footer ===== */}
       <footer className="w-full bg-ink-900 border-t border-gold-400/10 flex flex-col md:flex-row justify-between items-center px-8 md:px-16 py-10">
         <div className="flex flex-col gap-3 mb-8 md:mb-0">
@@ -139,6 +138,7 @@ export default function HomePage() {
       <EditModal />
       <DeleteConfirmDialog />
       <GitHubSync />
+      {showBgPicker && <BackgroundPicker onClose={() => setShowBgPicker(false)} />}
     </div>
   );
 }

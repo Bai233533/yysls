@@ -5,6 +5,10 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+/* ================================================================
+ *  成员 (member) 相关接口
+ * ================================================================ */
+
 export interface SupabaseMember {
   id: number;
   name: string;
@@ -69,6 +73,86 @@ export async function deleteMember(id: number): Promise<boolean> {
     .eq("id", id);
   if (error) {
     console.error("[Supabase] deleteMember error:", error);
+    return false;
+  }
+  return true;
+}
+
+/* ================================================================
+ *  照片墙 (photo) 相关接口
+ * ================================================================ */
+
+export interface SupabasePhoto {
+  id: number;
+  name: string;
+  src: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at?: string;
+}
+
+// Fetch all active photos, ordered by sort_order
+export async function fetchPhotos(): Promise<SupabasePhoto[]> {
+  const { data, error } = await supabase
+    .from("photo")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  if (error) {
+    console.error("[Supabase] fetchPhotos error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+// Fetch all photos (including inactive, for admin)
+export async function fetchAllPhotos(): Promise<SupabasePhoto[]> {
+  const { data, error } = await supabase
+    .from("photo")
+    .select("*")
+    .order("sort_order", { ascending: true });
+  if (error) {
+    console.error("[Supabase] fetchAllPhotos error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+// Create a photo
+export async function createPhoto(photo: Omit<SupabasePhoto, "id" | "created_at">): Promise<number | null> {
+  const { data, error } = await supabase
+    .from("photo")
+    .insert([photo])
+    .select("id")
+    .single();
+  if (error) {
+    console.error("[Supabase] createPhoto error:", error);
+    return null;
+  }
+  return data?.id || null;
+}
+
+// Update a photo
+export async function updatePhoto(id: number, data: Record<string, unknown>): Promise<boolean> {
+  const { error } = await supabase
+    .from("photo")
+    .update(data)
+    .eq("id", id);
+  if (error) {
+    console.error("[Supabase] updatePhoto error:", error);
+    return false;
+  }
+  return true;
+}
+
+// Delete a photo
+export async function deletePhoto(id: number): Promise<boolean> {
+  const { error } = await supabase
+    .from("photo")
+    .delete()
+    .eq("id", id);
+  if (error) {
+    console.error("[Supabase] deletePhoto error:", error);
     return false;
   }
   return true;

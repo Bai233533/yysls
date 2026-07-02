@@ -56,10 +56,10 @@ export default function MemberGrid({ members, currentPage }: MemberGridProps) {
         setPhase("idle");
         setIsAnimating(false);
         prevPageRef.current = currentPage;
-      }, 350 + (members.length - 1) * 40);
+      }, 250 + (members.length - 1) * 25);
 
       return () => clearTimeout(enterTimer);
-    }, 300);
+    }, 200);
 
     return () => clearTimeout(exitTimer);
   }, [currentPage, members]);
@@ -81,7 +81,7 @@ export default function MemberGrid({ members, currentPage }: MemberGridProps) {
           minHeight: typeof containerHeight === "number" ? `${containerHeight}px` : "auto",
           opacity: phase === "exiting" ? 0 : 1,
           transform: phase === "exiting" ? "translateY(-12px)" : "translateY(0)",
-          transition: "opacity 300ms cubic-bezier(0.4,0,0.2,1), transform 300ms cubic-bezier(0.4,0,0.2,1)",
+          transition: "opacity 200ms cubic-bezier(0.4,0,0.2,1), transform 200ms cubic-bezier(0.4,0,0.2,1)",
         }}
       >
         {displayMembers.map((member, i) => (
@@ -90,8 +90,8 @@ export default function MemberGrid({ members, currentPage }: MemberGridProps) {
             style={{
               opacity: phase === "entering" ? 0 : 1,
               transform: phase === "entering" ? "translateY(16px)" : "translateY(0)",
-              transition: "opacity 350ms cubic-bezier(0.4,0,0.2,1), transform 350ms cubic-bezier(0.4,0,0.2,1)",
-              transitionDelay: phase === "entering" ? `${i * 40}ms` : "0ms",
+              transition: "opacity 250ms cubic-bezier(0.4,0,0.2,1), transform 250ms cubic-bezier(0.4,0,0.2,1)",
+              transitionDelay: phase === "entering" ? `${i * 25}ms` : "0ms",
             }}
           >
             <MemberCard member={member} />
