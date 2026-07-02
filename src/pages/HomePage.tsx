@@ -11,11 +11,11 @@ import GitHubSync from "../components/GitHubSync";
 import { useStore } from "../store/useStore";
 
 export default function HomePage() {
-  const { members, currentPage, membersPerPage, setCurrentPage, setSelectedMember, setAddingMember, syncFromGitHub, githubToken } = useStore();
+  const { members, currentPage, membersPerPage, setCurrentPage, setSelectedMember, setAddingMember, syncFromCloud } = useStore();
 
-  // Auto-sync from GitHub on page load if token exists
+  // Auto-sync from cloud on page load
   useEffect(() => {
-    if (githubToken) syncFromGitHub();
+    syncFromCloud();
   }, []); // eslint-disable-line
   const totalPages = Math.ceil(members.length / membersPerPage);
   const paginatedMembers = members.slice(
