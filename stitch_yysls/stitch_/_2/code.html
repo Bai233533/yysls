@@ -1,0 +1,254 @@
+<!DOCTYPE html><html class="dark" lang="zh-CN" style="scroll-behavior: smooth; width: 1280px; height: 1024px; overflow: hidden; position: relative;"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Baiye Guild - Winds of Yanyun</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&amp;family=Hanken+Grotesk:wght@400;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&amp;family=Zhi+Mang+Xing&amp;display=swap" rel="stylesheet">
+<!-- Integration of Design System Tokens (Wuxia Noir) -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#c8c6c5",
+                        "surface-container-lowest": "#0d0e0f",
+                        "surface-dim": "#121414",
+                        "on-surface": "#e2e2e2",
+                        "secondary": "#e9c176",
+                        "background": "#121414",
+                        "on-surface-variant": "#c4c7c7",
+                        "outline-variant": "#444748",
+                        "surface-container-low": "#1a1c1c",
+                        "error": "#ffb4ab"
+                    },
+                    "spacing": {
+                        "base": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "64px",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-xl": ["Noto Serif SC"],
+                        "headline-lg": ["Noto Serif SC"],
+                        "headline-md": ["Noto Serif SC"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-xl": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0d0e0f;
+            color: #e2e2e2;
+            overflow-x: hidden;
+            font-family: 'Hanken Grotesk', sans-serif;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Ink wash atmospheric effects */
+        .ink-overlay {
+            background: radial-gradient(circle at center, transparent 0%, #0d0e0f 85%);
+            pointer-events: none;
+        }
+
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scroll-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Hero Text Ring Animation */
+        @keyframes rotateText {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .rotating-labels {
+            animation: rotateText 25s linear infinite;
+        }
+
+        /* Gold metallic sheen for buttons */
+        .btn-metallic {
+            background: linear-gradient(135deg, #e9c176 0%, #c19b4d 100%);
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        .btn-metallic:hover {
+            filter: brightness(1.1);
+            transform: scale(0.98);
+        }
+
+        /* Paper grain texture */
+        .paper-grain {
+            position: relative;
+        }
+        .paper-grain::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            opacity: 0.03;
+            pointer-events: none;
+            background-image: url("https://www.transparenttextures.com/patterns/natural-paper.png");
+            z-index: 1;
+        }
+
+        /* Frosted Glass Navigation */
+        .nav-frosted {
+            backdrop-filter: blur(12px);
+            background: rgba(13, 14, 15, 0.6);
+            border-bottom: 1px solid rgba(233, 193, 118, 0.15);
+        }
+    </style>
+</head>
+<body class="antialiased">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm border-b border-outline-variant/20 flex justify-between items-center px-margin-desktop py-4"><div class="flex items-center gap-8"><h1 class="font-headline-lg text-headline-lg font-bold text-secondary tracking-widest">Baiye</h1><nav class="hidden md:flex gap-6"><a class="font-body-md text-body-md text-secondary border-b-2 border-secondary pb-1" href="#">百业成员</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors" href="#">照片墙</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors" href="#">百业资料</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors" href="#">加入我们</a></nav></div><div class="flex items-center gap-4"><button class="p-2 hover:bg-surface-bright/20 rounded-full transition-all text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button><button class="p-2 hover:bg-surface-bright/20 rounded-full transition-all text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined" data-icon="person">person</span></button></div></header>
+<!-- Main Hero Canvas -->
+<main class="relative min-h-screen w-full flex flex-col justify-center items-center overflow-hidden">
+<!-- Background Hero Image (Using IMAGE_7 as reference for layout/mood) -->
+<div class="absolute inset-0 z-0 overflow-hidden">
+<div class="w-full h-full bg-cover bg-center transition-transform duration-1000 scale-100" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC8MLPUz_u3sd4xFZCqz8Nm3DrSnY3-dQzERmUxEkQdrEyndtUbDEKUkgzhrEbOVFtmeiPlPKG99z4f3yEMKAMmyoRpnX0gGOuk8eoFm5nNq7BSxaeguzbOlWcC9lYzYxiulpswsyRAV_0lJDK5XYmUslRDxRHR9eeyNCLPSPrd8-LuwJAbeqcxnemWc5Gp5pedxF8UWj-QDIwctx07n8A7l019hrnw6Gk7rzkHb0RkB3nykpsupUcACqMWo8fLgReh8N8UHofvW8Y');">
+</div>
+<!-- Ink Wash / Shadow Overlays for contrast and atmosphere -->
+<div class="absolute inset-0 bg-gradient-to-t from-[#0d0e0f] via-transparent to-[#0d0e0f]/40"></div>
+<div class="absolute inset-0 bg-black/30"></div>
+<div class="absolute inset-0 ink-overlay"></div>
+</div>
+<!-- Central Identity Branding Overlay -->
+<div class="relative z-20 flex flex-col items-center select-none">
+<div class="relative w-80 h-80 flex items-center justify-center">
+<!-- Rotating Decorative Text Ring -->
+<div class="absolute inset-0 rotating-labels opacity-40">
+<svg class="w-full h-full fill-secondary font-label-sm" viewBox="0 0 100 100">
+<path d="M 50, 50 m -38, 0 a 38,38 0 1,1 76,0 a 38,38 0 1,1 -76,0" fill="transparent" id="circlePath"></path>
+<text class="text-[5.5px] tracking-widest">
+<textPath xlink:href="#circlePath">
+                            WINDS OF YANYUN • BAIYE GUILD • 燕云十六声 • 百业 • COMMANDER OF THE FRONTIER • 
+                        </textPath>
+</text>
+</svg>
+</div>
+<!-- Central Medallion (High Contrast White) -->
+<div class="w-56 h-56 rounded-full bg-white flex items-center justify-center shadow-[0_0_80px_rgba(233,193,118,0.25)] border-4 border-secondary/20 paper-grain group cursor-pointer transition-transform duration-700 hover:scale-105 z-30">
+<div class="text-center p-8 relative z-10">
+<h1 class="text-[#0d0e0f] mb-1" style="font-family: 'Zhi Mang Xing', cursive; font-size: 68px; line-height: 1; font-weight: 400;">百业</h1>
+<div class="w-14 h-0.5 bg-[#0d0e0f]/30 mx-auto my-3"></div>
+<p class="text-[#0d0e0f] tracking-[0.3em] font-semibold" style="font-family: 'Ma Shan Zheng', cursive; font-size: 26px;">情意结</p>
+</div>
+</div>
+</div>
+<div class="mt-10 text-center max-w-2xl px-6">
+<h2 class="font-headline-md text-secondary tracking-[0.5em] mb-4 text-shadow-lg" style="font-family: 'Noto Serif SC', serif;">燕云十六声 · 百业之巅</h2>
+<p class="font-body-md text-on-surface/90 leading-relaxed italic opacity-80">
+                "展示各流派咸鱼大才，摸鱼我们是认真的！"
+            </p>
+</div>
+</div>
+<!-- Bottom Horizontal Scrolling Member Gallery -->
+<div class="absolute bottom-0 left-0 w-full z-30 pb-10">
+<div class="flex items-center justify-between px-margin-desktop mb-4">
+<h3 class="font-label-sm text-secondary/70 tracking-widest uppercase">活跃成员档案</h3>
+<div class="flex gap-4">
+<button class="material-symbols-outlined text-secondary/60 hover:text-secondary hover:scale-110 transition-all cursor-pointer" id="prevBtn">chevron_left</button>
+<button class="material-symbols-outlined text-secondary/60 hover:text-secondary hover:scale-110 transition-all cursor-pointer" id="nextBtn">chevron_right</button>
+</div>
+</div>
+<div class="flex gap-3 overflow-x-auto scroll-hide px-margin-desktop snap-x" id="memberList">
+<!-- Member Avatars Loop (Placeholder Wuxia Style) -->
+<!-- Item 1 -->
+<div class="flex-none w-28 aspect-[3/4] snap-start grayscale hover:grayscale-0 transition-all duration-500 border border-outline-variant/40 hover:border-secondary cursor-pointer group relative">
+<div class="w-full h-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuB3p_GwXaJodAOyI4KaZewWG4DJ1dAFcoCDKhZJ-ZBM1zCfJYiE92HZldN7LNzMTze5qTOy6nqwQSXZGbAASf6yAJjqyxdV64lUSfVfps-NuYge5lQOYT5atO9uiogLbPrjB97kxS4CvWGRq8__-sliv0W52e8SVlhwgNbKeha_QrpM81j7OsjEy6raaVy3w1WJgVTRkH9CMXq8NhDfIo7xOI1SSLD8LSLhiF8bt2q2bLgATY5i-RyzTpyr1LMGrlL-BxUWXdLAT78')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+<span class="text-[10px] text-white tracking-tighter">无名剑客</span>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex-none w-28 aspect-[3/4] snap-start grayscale hover:grayscale-0 transition-all duration-500 border border-outline-variant/40 hover:border-secondary cursor-pointer group relative">
+<div class="w-full h-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCIbT0ZC0JGGPimOc5w-lNoacatHcEV6w4pM5_xUeExtTXeEUHcG55smC1juDjTYBOyS5VIsfuICGKcGA8cx7fD0hXcoZRRRlVqjsqOW5zPqAiSnVTN0-9F6r27n4Gjop6L_CXu28BVbrwJrO-zZttlKGsIoNSxGh-9fbTPVC3uaYz4eDZ5-mKQuLTm0hzzuZhDgtb7JwKTbQ-Ad0pfhLat7xvNEzOR3SNMlsGChuXpwP2YBepf8koZY5BU0IA9Xc8aGNqbjSPJjKw')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+<span class="text-[10px] text-white tracking-tighter">医心使者</span>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex-none w-28 aspect-[3/4] snap-start grayscale hover:grayscale-0 transition-all duration-500 border border-outline-variant/40 hover:border-secondary cursor-pointer group relative">
+<div class="w-full h-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCSdeF1lwto6Xwnkb-spawmSImYYy3DAYpGzHc9cQaxuCcx-HQG1O4u90q6V0_6d8xtM90jQKM12WZwWtRaQwebEzaFdmFPJX5OxEJo7V6xm7CrfLG7oFo6OgE5rSsoPXjqFtj4ZNFparVftSv5BHIU10FFOcCootxgtt4S8XIMtMr4rZkPDMVMMY7_98zixaCRKWE0DCv9UUnuqhiCOH2bjpphtcQLCPk3CfSltoMrTf7KTM1_6YLg2X_FMm6x-bVAi6z4r9gkkJs')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+<span class="text-[10px] text-white tracking-tighter">北境宗师</span>
+</div>
+</div>
+<!-- Additional Placeholders for density -->
+<div class="flex-none w-28 aspect-[3/4] snap-start grayscale hover:grayscale-0 transition-all duration-500 border border-outline-variant/40 hover:border-secondary cursor-pointer group relative">
+<div class="w-full h-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCb7oJRjwvh3uQUGORyQoYEGTZpy9nnQmw01NnXQ_AbDUgRkStfaIU4nUvjK3tiXfa1j6e8NgPnUcBBGgkP4GHn3mDzDVvdQq6kRugyLwaRGLKoFbfc7A6LPh4OEGY4RnIuoJ3JYCNekJF2J15vVefUQcKAx3gpbHE7CFQeanwCms9O7J-G32qL8jRxV3rUAr-u_hf8O7mampEADCg8kPQIRNfQEohPu6nC9_a8LNoOfPNlhfGewacyWG7nkyuH634rmF8yeGFbyuk')"></div>
+</div>
+<div class="flex-none w-28 aspect-[3/4] snap-start grayscale hover:grayscale-0 transition-all duration-500 border border-outline-variant/40 hover:border-secondary cursor-pointer group relative">
+<div class="w-full h-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDiKwGicHrHGYwlwkagdT3MPXYcAG4GtOGeIUGl4ZOHl6Isqepg3duneXLKT5l0VZPPl7WXiaRrHm8sGBJzLRyTaf5RzxpgTK-OUg1qSTGT8nR9JnrDaVxJOw_EpuRzXjcI6Irfy1trx6GEllE88wsg4wLsiR-IXfCHUXewYMNKzEY4j8l9aY00ZUWMJY9Y6n4L7eHGsrQpeZFqogyOO3fSSz-a6S6Hu5WxaEM-Gy1VS3Gy3y83dpZMZx9xzExGDf108eQrP_kM-LI')"></div>
+</div>
+<div class="flex-none w-28 aspect-[3/4] snap-start grayscale hover:grayscale-0 transition-all duration-500 border border-outline-variant/40 hover:border-secondary cursor-pointer group relative">
+<div class="w-full h-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDtIfm5WGUKVaJ7dp9XQzZjJa7ksml75qdluwEX12mZELfPSL5viGfZBkGNRhad3VxOGwFsx_fNAouCc2tb4pwqg3sCBYDs7F8xXt5ajB6lrzTmh5CeUgvLcXx20VVtKrMAlSom_x-mlqxKQDA1sNdem06UhYejdNrSnI-APfEM9Pkz42W3e_cTBCD5N3AoxAIu3UQx0nz_DUWyta5dMDjCEZBLFUA_Aqa--cAn82gZwbr7Cu0vMiVpEKMx9JhRMpRKWS0CxNTl25I')"></div>
+</div>
+<div class="flex-none w-28 aspect-[3/4] snap-start grayscale hover:grayscale-0 transition-all duration-500 border border-outline-variant/40 hover:border-secondary cursor-pointer group relative">
+<div class="w-full h-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDAz5GRhslE50mA3NCRtdENRR_HnilvWZc07AHc-qFi4akt4HOxx0zxNP_g5auMSO67J2nnOgrZ5kLwrPpBsVQaFpi5SuKYODuTdY3HWwzcdIyQIHy0lowhE_J1q2Eq4M23PeqbvTrdDVb05daia7TcPcab3JGTjJjh3XktWtS9hfJKsP1ljg0qHxNGD02lOWu4NTBoo3BUE9osErCjrCSv-oiIh4H8KPY2UlvfS8qgBly_rutCQemWLYBc6jmbb2pUzdX7DJi51Mg')"></div>
+</div>
+<div class="flex-none w-28 aspect-[3/4] snap-start grayscale hover:grayscale-0 transition-all duration-500 border border-outline-variant/40 hover:border-secondary cursor-pointer group relative">
+<div class="w-full h-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBXm4sU-h3ju-5JqpxG5QD-upmylbpKaofjQhuI2RtlFYKDsvFd0IJJLRFjPuiqVc6gA11FitxZElXH0dIoVKAXfAZX0iy5wzpcOuu-vYbJ0cd0jhI5pTdimHi_wQr9dm69lFISTHUs5MPQclnt9klJoBd9mkIS14kfz_Vlvzpd0qd3FVRAdfZFRDTFr2Mf_BDbyszJ1auPWyu5zTbXzt9QZN-XplYJKIwzWslwWJUoTQ5yZ7dFu2i-5IGhYfTZN-3O-LW17K12slg')"></div>
+</div>
+<div class="flex-none w-28 aspect-[3/4] snap-start grayscale hover:grayscale-0 transition-all duration-500 border border-outline-variant/40 hover:border-secondary cursor-pointer group relative">
+<div class="w-full h-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCIo4rptw10GODR2-gAFMykzRANLCgn9qPcfQRkrjYFzcq01oLTLJ9NrjqG-gt3QfeOsseraRCuwUbu8pQEx9dMKrBIlpCW54wTContJI7-7Z-uGUFhBzFnO5jR1DgHumfNw4cSDG4r8d38FmSFuUgfHvRJ1IhCYVGTqh-yD6PNBqhpnsYE-E6mV7THC35Hu-VI_IQwqbf7h-Imjxdf-wj1tA7KmxMHh1dls7heojQz3v84GHOMm_LK6G1mP81SBaajmN51bjuG7D4')"></div>
+</div>
+<div class="flex-none w-28 aspect-[3/4] snap-start grayscale hover:grayscale-0 transition-all duration-500 border border-outline-variant/40 hover:border-secondary cursor-pointer group relative">
+<div class="w-full h-full bg-cover bg-center" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAABMLnYtH0AkHc4AmSxaok4oWTHgB_8W8M-s6K7jPJhk9ANG4cijZ-XOOhenj9uIaJU1sR8TwYpWHrCPtHeokshayU71936QjzMz4zkppdm2ThDlgxk6tGhbo-XYxrVbF_uoTVKB1CspUdPSoSvSDLgNgQnPk5EUIuN9jZSQj05KzMQ5-R1Wh2lC-rZynpxOz9soyTzdekVuWUwxNQDzqcRtuNtfmiClUoe6WiG4wPYzIWTSo_LgdmDtFvoQLG0iwuywPXPec4suw')"></div>
+</div>
+</div>
+</div>
+<!-- Sound Control Floating Action -->
+<div class="fixed top-24 right-10 z-50">
+<button class="w-10 h-10 rounded-full border border-secondary/30 flex items-center justify-center text-secondary hover:bg-secondary/10 backdrop-blur-md transition-all">
+<span class="material-symbols-outlined text-[18px]">volume_up</span>
+</button>
+</div>
+</main>
+<script>
+    // Micro-interaction for the scrolling gallery
+    const scrollContainer = document.getElementById('memberList');
+    const nextBtn = document.getElementById('nextBtn');
+    const prevBtn = document.getElementById('prevBtn');
+
+    if(nextBtn && scrollContainer) {
+        nextBtn.addEventListener('click', () => {
+            scrollContainer.scrollBy({ left: 300, behavior: 'smooth' });
+        });
+        prevBtn.addEventListener('click', () => {
+            scrollContainer.scrollBy({ left: -300, behavior: 'smooth' });
+        });
+    }
+
+    // Parallax interaction for immersive depth
+    window.addEventListener('mousemove', (e) => {
+        const bg = document.querySelector('.bg-cover');
+        const x = (window.innerWidth / 2 - e.pageX) / 60;
+        const y = (window.innerHeight / 2 - e.pageY) / 60;
+        if(bg) bg.style.transform = `scale(1.05) translate(${x}px, ${y}px)`;
+    });
+</script>
+
+
+
+
+</body></html>

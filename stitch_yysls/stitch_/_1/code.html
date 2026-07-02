@@ -1,0 +1,214 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Baiye Guild | Where Winds Meet</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;500;600;700&amp;family=Hanken+Grotesk:wght@400;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#333535",
+                        "on-secondary-container": "#dab36a",
+                        "secondary-container": "#604403",
+                        "on-tertiary-container": "#d35041",
+                        "surface-container-lowest": "#0d0e0f",
+                        "on-primary-fixed-variant": "#474646",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "surface-dim": "#121414",
+                        "secondary-fixed": "#ffdea5",
+                        "on-tertiary-fixed-variant": "#8a1b13",
+                        "tertiary-container": "#290000",
+                        "on-secondary-fixed-variant": "#5d4201",
+                        "primary-container": "#0f0f0f",
+                        "surface-container-high": "#282a2b",
+                        "on-error": "#690005",
+                        "outline": "#8e9192",
+                        "surface-container-low": "#1a1c1c",
+                        "primary": "#c8c6c5",
+                        "on-primary-container": "#7d7b7b",
+                        "inverse-primary": "#5f5e5e",
+                        "on-secondary-fixed": "#261900",
+                        "on-background": "#e2e2e2",
+                        "on-surface": "#e2e2e2",
+                        "secondary": "#e9c176",
+                        "outline-variant": "#444748",
+                        "inverse-on-surface": "#2f3131",
+                        "primary-fixed": "#e5e2e1",
+                        "surface": "#121414",
+                        "on-surface-variant": "#c4c7c7",
+                        "inverse-surface": "#e2e2e2",
+                        "on-tertiary": "#690001",
+                        "surface-bright": "#38393a",
+                        "tertiary": "#ffb4a9",
+                        "on-tertiary-fixed": "#410000",
+                        "surface-tint": "#c8c6c5",
+                        "error-container": "#93000a",
+                        "background": "#121414",
+                        "on-primary": "#313030",
+                        "on-primary-fixed": "#1c1b1b",
+                        "tertiary-fixed-dim": "#ffb4a9",
+                        "surface-container": "#1e2020",
+                        "error": "#ffb4ab",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#333535",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-secondary": "#412d00",
+                        "secondary-fixed-dim": "#e9c176"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "margin-desktop": "64px",
+                        "container-max": "1440px",
+                        "gutter": "24px",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-md": ["Noto Serif"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "headline-xl": ["Noto Serif"],
+                        "body-md": ["Hanken Grotesk"],
+                        "headline-lg": ["Noto Serif"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "600"}],
+                        "headline-xl": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.3", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* Cinematic Background Effects */
+        .cinematic-overlay {
+            background: radial-gradient(circle at 50% 40%, transparent 10%, #0d0e0f 85%);
+        }
+
+        .ink-smoke {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.3;
+            mix-blend-mode: screen;
+        }
+
+        /* Spotlight Animation */
+        @keyframes god-rays {
+            0%, 100% { opacity: 0.4; transform: rotate(-5deg) scale(1.1); }
+            50% { opacity: 0.7; transform: rotate(5deg) scale(1.2); }
+        }
+
+        .god-ray {
+            position: absolute;
+            top: -20%;
+            left: 50%;
+            width: 200vw;
+            height: 200vh;
+            background: conic-gradient(from 180deg at 50% 0%, transparent 45%, rgba(233, 193, 118, 0.08) 50%, transparent 55%);
+            transform-origin: top center;
+            animation: god-rays 12s ease-in-out infinite;
+            filter: blur(40px);
+            pointer-events: none;
+        }
+
+        /* Particle effects */
+        .particle {
+            position: absolute;
+            background: #dab36a;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            animation: rise 10s infinite linear;
+        }
+
+        @keyframes rise {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            50% { opacity: 0.4; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+
+        /* Button Hover Glow */
+        .gold-btn-shadow:hover {
+            box-shadow: 0 0 25px rgba(233, 193, 118, 0.4), inset 0 0 10px rgba(233, 193, 118, 0.2);
+        }
+
+        /* Traditional Divider Fade */
+        .divider-fade {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #dab36a 50%, transparent);
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface overflow-hidden h-screen w-screen selection:bg-secondary/30"><header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm border-b border-outline-variant/20 flex justify-between items-center px-margin-desktop py-4">
+<div class="flex items-center gap-8">
+<h1 class="font-headline-lg text-headline-lg font-bold text-secondary tracking-widest">Baiye</h1>
+<nav class="hidden md:flex gap-6"><a class="font-body-md text-body-md text-secondary border-b-2 border-secondary pb-1" href="#">百业成员</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors" href="#">照片墙</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors" href="#">百业资料</a><a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors" href="#">加入我们</a></nav>
+</div>
+<div class="flex items-center gap-4"><button class="p-2 hover:bg-surface-bright/20 rounded-full transition-all text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button><button class="p-2 hover:bg-surface-bright/20 rounded-full transition-all text-on-surface-variant hover:text-secondary"><span class="material-symbols-outlined" data-icon="person">person</span></button></div>
+</header>
+<!-- Atmospheric Layer -->
+<div class="fixed inset-0 z-0 pointer-events-none">
+<!-- Base Dark Layer -->
+<div class="absolute inset-0 bg-[#0d0e0f]"></div>
+<!-- Animated Rays -->
+<div class="god-ray"></div>
+<!-- Image Background (Subtle) -->
+<div class="absolute inset-0 opacity-20 bg-cover bg-center mix-blend-overlay" data-alt="A cinematic, low-angle landscape of a misty, ancient Chinese mountain pass at dusk. Wisps of grey smoke and swirling fog drift between jagged charcoal rocks. The atmosphere is heavy with the Wuxia Noir aesthetic, utilizing deep shadows and cold, dark tones. Faint silhouettes of traditional architectural curved roofs are visible through the dense atmosphere." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBeRHomwh748QOEWjrNlQoTVfdL6EaHZgl9vDzEZl2fl00on0q1Liu8TljlAQda8Xa64btgHyt1qA4bg0tbLrCWReaNX5j3LejDG2eAERL59WxxwvHIiTIo80NjpuxeYlSyQ1pys3MdAif-Zm9hzaBlfPf2YZaWDtO9NMtEd5273-P9gSI6NT5DOVYVpFJFiNLTzgXfC4vpI_3fxy4ZymqH3XhKj7oKEG1oNdGufrpW3Ngpe27fj5WtrKwRHb2ICNPVA1pZ9LT7aO8')">
+</div>
+<!-- Fog/Mist Overlay -->
+<div class="absolute inset-0 cinematic-overlay"></div>
+<!-- Particles -->
+<div id="particle-container"></div>
+</div>
+<!-- Main Content Canvas -->
+<main class="relative z-10 flex flex-col items-center justify-center h-full px-margin-mobile md:px-margin-desktop text-center pt-20">
+<!-- Logo Branding Section -->
+<div class="space-y-6 mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+<!-- Primary Visual Logo (Placeholder for the large brush calligraphy) -->
+<div class="flex flex-col items-center">
+<img class="max-w-[320px] md:max-w-[480px] drop-shadow-[0_0_30px_rgba(0,0,0,1)]" data-alt="A large, dramatic high-contrast ink-brush calligraphy logo of the Chinese characters '燕云十六声'. The brushstrokes are thick, expressive, and textured, with subtle ink splatters at the edges. The characters have a slight parchment-like texture and a faint golden outer glow. The overall style is gritty yet majestic, representing a high-production wuxia epic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfPeVNZhn4ANoRSUlnIOOcysp9O6BsXTHB5MqlZI9P0v_BUCD2nIDCCmNGb9imN5wtC5akCAvgUPHB3aldLxlA7tkQy830ATD9VmGLzgPUjthP-bXhhaes8efeqICFXmlWO4jLuKkhr4CAJeAy2QYYViAWA6iJqgyf-CNfHgvwUYRzOgheIC3gIuIni0Lnv7wxuBer9TNYhYUrzEiA_3PZ1uC-ZVhwdUHg8cPsBBUdMAXksgX1rrPyI-5Vdn7weOfQdxE7NE4_bbs">
+<h1 class="font-headline-md text-secondary mt-4 tracking-[0.4em] uppercase text-body-md md:text-headline-md">
+                    Where Winds Meet
+                </h1>
+<div class="divider-fade w-24 md:w-48 mt-4"></div>
+<h2 class="font-headline-lg text-on-surface-variant mt-2 tracking-widest font-light opacity-80 text-body-lg md:text-headline-lg">
+                    Baiye Guild
+                </h2>
+</div>
+</div>
+<!-- Interaction Portal -->
+<div class="relative group animate-in fade-in zoom-in-95 delay-500 duration-1000 fill-mode-backwards">
+<!-- Decorative Metallic Elements -->
+<div class="absolute -inset-4 border border-secondary/10 rounded-lg pointer-events-none group-hover:border-secondary/30 transition-colors duration-500"></div>
+<button class="relative overflow-hidden group/btn px-12 py-4 bg-secondary-container/20 border border-secondary/50 rounded-sm font-headline-md text-secondary tracking-[0.2em] transition-all duration-500 gold-btn-shadow active:scale-95" onclick="enterGuild()">
+<!-- Inner Gradient Sheen -->
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-secondary/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000"></div>
+<span class="relative z-10">进入百业</span>
+<!-- Metallic Corner Accents -->
+<div class="absolute top-0 left-0 w-2 h-2 border-t border-l border-secondary"></div>
+<div class="absolute top-0 right-0 w-2 h-2 border-t border-r border-secondary"></div>
+</button></div></main>
+
+
+
+</body></html>

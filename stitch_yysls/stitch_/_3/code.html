@@ -1,0 +1,721 @@
+<!DOCTYPE html><html class="dark" lang="zh-CN" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Baiye Guild - Members Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;500;600;700&amp;family=Hanken+Grotesk:wght@400;600&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@100..900&amp;family=Noto+Serif:wght@100..900&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .ink-fade {
+            mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+        }
+        .paper-texture {
+            background-image: url("https://www.transparenttextures.com/patterns/carbon-fibre.png");
+            opacity: 0.05;
+        }
+        .metal-shine {
+            background: linear-gradient(135deg, rgba(233,193,118,1) 0%, rgba(186,146,72,1) 50%, rgba(233,193,118,1) 100%);
+        }
+        .card-hover-effect:hover .action-overlay {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .action-overlay {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e9c176;
+            border-radius: 2px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#d35041",
+                        "on-primary": "#313030",
+                        "surface": "#121414",
+                        "inverse-surface": "#e2e2e2",
+                        "primary-fixed": "#e5e2e1",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "tertiary-container": "#290000",
+                        "surface-dim": "#121414",
+                        "secondary-fixed-dim": "#e9c176",
+                        "on-surface": "#e2e2e2",
+                        "primary-container": "#0f0f0f",
+                        "tertiary-fixed-dim": "#ffb4a9",
+                        "on-surface-variant": "#c4c7c7",
+                        "tertiary": "#ffb4a9",
+                        "on-background": "#e2e2e2",
+                        "secondary": "#e9c176",
+                        "on-error": "#690005",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-secondary": "#412d00",
+                        "background": "#121414",
+                        "on-secondary-fixed": "#261900",
+                        "outline-variant": "#444748",
+                        "on-tertiary-fixed-variant": "#8a1b13",
+                        "surface-container-highest": "#333535",
+                        "surface-container-lowest": "#0d0e0f",
+                        "outline": "#8e9192",
+                        "surface-tint": "#c8c6c5",
+                        "inverse-on-surface": "#2f3131",
+                        "error": "#ffb4ab",
+                        "on-tertiary": "#690001",
+                        "secondary-fixed": "#ffdea5",
+                        "surface-bright": "#38393a",
+                        "on-error-container": "#ffdad6",
+                        "secondary-container": "#604403",
+                        "surface-container-low": "#1a1c1c",
+                        "on-secondary-container": "#dab36a",
+                        "on-primary-fixed-variant": "#474646",
+                        "surface-container-high": "#282a2b",
+                        "surface-variant": "#333535",
+                        "surface-container": "#1e2020",
+                        "primary": "#c8c6c5",
+                        "on-primary-container": "#7d7b7b",
+                        "on-secondary-fixed-variant": "#5d4201",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed": "#410000",
+                        "on-primary-fixed": "#1c1b1b",
+                        "inverse-primary": "#5f5e5e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "margin-mobile": "16px",
+                        "base": "8px",
+                        "gutter": "24px",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Hanken Grotesk"],
+                        "headline-xl": ["Noto Serif"],
+                        "headline-md": ["Noto Serif"],
+                        "label-sm": ["Hanken Grotesk"],
+                        "headline-lg": ["Noto Serif"],
+                        "body-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-xl": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background min-h-screen overflow-x-hidden selection:bg-secondary/30">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md shadow-sm border-b border-outline-variant/20 flex justify-between items-center px-margin-desktop py-4">
+<div class="flex items-center gap-8">
+<h1 class="font-headline-lg text-headline-lg font-bold text-secondary tracking-widest">Baiye</h1>
+<nav class="hidden md:flex gap-6">
+<a class="font-body-md text-body-md text-secondary border-b-2 border-secondary pb-1" href="#">Members</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors" href="#">Gallery</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors" href="#">Archives</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-secondary transition-colors" href="#">Join Us</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-surface-bright/20 rounded-full transition-all text-on-surface-variant hover:text-secondary">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 hover:bg-surface-bright/20 rounded-full transition-all text-on-surface-variant hover:text-secondary">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+</button>
+</div>
+</header>
+<main class="pt-32 pb-24 px-margin-mobile md:px-margin-desktop max-w-container-max mx-auto relative">
+<!-- Atmospheric Background Element -->
+<div class="absolute -top-40 -left-40 w-96 h-96 bg-secondary/5 blur-[120px] rounded-full pointer-events-none"></div>
+<div class="absolute top-1/2 -right-40 w-[500px] h-[500px] bg-tertiary-container/10 blur-[150px] rounded-full pointer-events-none"></div>
+<!-- Section Header -->
+<section class="mb-12" id="members-section">
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-outline-variant/20 pb-8">
+<div>
+<h2 class="font-headline-xl text-headline-xl text-on-surface mb-2 tracking-tight">百业成员</h2>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-70 flex items-center gap-2 uppercase tracking-[0.2em]">
+<span class="w-8 h-[1px] bg-secondary/50"></span>
+                        Members of Baiye
+                    </p>
+</div>
+<button class="group relative flex items-center gap-3 px-8 py-3 rounded-none metal-shine text-on-primary font-label-sm text-label-sm uppercase tracking-widest transition-transform active:scale-95 shadow-lg shadow-secondary/10 overflow-hidden">
+<div class="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>
+<span class="material-symbols-outlined" data-icon="person_add">person_add</span>
+                    添加成员
+                </button>
+</div>
+</section>
+<!-- Members Bento Grid -->
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap- gutter">
+<!-- Member Card Item (Repeated for variety) -->
+<script>
+                const members = [
+                    { name: "泥丸蛋略", role: "百业社主", tag: "Cinnabar" },
+                    { name: "月月有雨", role: "副社长", tag: "Neutral" },
+                    { name: "雾姬", role: "副社长", tag: "Neutral" },
+                    { name: "祈婉", role: "百业指挥", tag: "Neutral" },
+                    { name: "云暮溪泽", role: "百业指挥", tag: "Neutral" },
+                    { name: "迷糊小柒", role: "百业指挥", tag: "Neutral" },
+                    { name: "同人万歌", role: "百业指挥", tag: "Neutral" },
+                    { name: "姬无命", role: "成员", tag: "Neutral" },
+                    { name: "青竹幽香", role: "百业指挥", tag: "Neutral" },
+                    { name: "玉斯年", role: "成员", tag: "Neutral" }
+                ];
+
+                document.write(members.map((m, i) => `
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has ${i % 2 === 0 ? 'flowing dark hair and metallic hair accessories' : 'long silver hair and ceremonial robes'} consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    ${m.name}
+                                </span>
+                                <span class="${m.tag === 'Cinnabar' ? 'bg-on-tertiary-container text-white' : 'bg-secondary/20 text-secondary'} backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    ${m.role}
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-${800 + i}</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                `).join(''));
+            </script>
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has flowing dark hair and metallic hair accessories consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    泥丸蛋略
+                                </span>
+                                <span class="bg-on-tertiary-container text-white backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    百业社主
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-800</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has long silver hair and ceremonial robes consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    月月有雨
+                                </span>
+                                <span class="bg-secondary/20 text-secondary backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    副社长
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-801</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has flowing dark hair and metallic hair accessories consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    雾姬
+                                </span>
+                                <span class="bg-secondary/20 text-secondary backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    副社长
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-802</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has long silver hair and ceremonial robes consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    祈婉
+                                </span>
+                                <span class="bg-secondary/20 text-secondary backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    百业指挥
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-803</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has flowing dark hair and metallic hair accessories consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    云暮溪泽
+                                </span>
+                                <span class="bg-secondary/20 text-secondary backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    百业指挥
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-804</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has long silver hair and ceremonial robes consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    迷糊小柒
+                                </span>
+                                <span class="bg-secondary/20 text-secondary backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    百业指挥
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-805</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has flowing dark hair and metallic hair accessories consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    同人万歌
+                                </span>
+                                <span class="bg-secondary/20 text-secondary backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    百业指挥
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-806</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has long silver hair and ceremonial robes consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    姬无命
+                                </span>
+                                <span class="bg-secondary/20 text-secondary backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    成员
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-807</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has flowing dark hair and metallic hair accessories consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    青竹幽香
+                                </span>
+                                <span class="bg-secondary/20 text-secondary backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    百业指挥
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-808</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                
+                    <div class="group relative card-hover-effect bg-surface-container-lowest rounded-lg overflow-hidden border border-outline-variant/10 shadow-xl transition-all duration-500 hover:border-secondary/40 hover:-translate-y-2 cursor-pointer">
+                        <!-- Paper Texture Overlay -->
+                        <div class="absolute inset-0 paper-texture pointer-events-none z-10"></div>
+                        
+                        <!-- Profile Image Container -->
+                        <div class="aspect-[3/4] relative overflow-hidden bg-surface-container">
+                            <img src="placeholder" data-alt="A portrait of a highly detailed Wuxia character with elegant traditional features. The style is dark, cinematic noir with sharp lighting and deep shadows. The character has long silver hair and ceremonial robes consistent with a high-end martial arts fantasy aesthetic. Rich textures of silk and polished metal dominate the composition." class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110">
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2 z-20">
+                                <span class="bg-surface-container-highest/90 backdrop-blur-sm px-3 py-1 text-[10px] font-bold tracking-widest text-on-surface uppercase rounded-none border border-outline-variant/30">
+                                    玉斯年
+                                </span>
+                                <span class="bg-secondary/20 text-secondary backdrop-blur-sm px-2 py-0.5 text-[9px] font-semibold tracking-[0.15em] uppercase rounded-none self-start">
+                                    成员
+                                </span>
+                            </div>
+
+                            <!-- Action Overlay (Edit/Delete) -->
+                            <div class="action-overlay absolute bottom-4 right-4 flex gap-2 z-20">
+                                <button class="w-10 h-10 flex items-center justify-center bg-surface/90 text-on-surface-variant hover:text-secondary hover:bg-surface border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+                                </button>
+                                <button class="w-10 h-10 flex items-center justify-center bg-on-tertiary-container/90 text-white hover:bg-on-tertiary-container border border-outline-variant/30 transition-colors backdrop-blur-md">
+                                    <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                                </button>
+                            </div>
+
+                            <!-- Click to Detail indicator -->
+                            <div class="absolute inset-0 bg-secondary/0 group-hover:bg-secondary/5 transition-colors pointer-events-none"></div>
+                        </div>
+
+                        <!-- Card Footer Label -->
+                        <div class="p-3 border-t border-outline-variant/5 bg-surface-container-low flex justify-between items-center">
+                            <span class="font-label-sm text-label-sm text-on-surface-variant/40 tracking-widest">ID: 1152-809</span>
+                            <span class="material-symbols-outlined text-xs text-secondary/30" data-icon="verified">verified</span>
+                        </div>
+                    </div>
+                
+</div>
+<!-- Pagination/Load More Atmospheric Button -->
+<div class="mt-20 flex justify-center items-center gap-4">
+    <!-- Previous Button -->
+    <button class="w-10 h-10 flex items-center justify-center border border-outline-variant/20 bg-surface-container-lowest/50 text-on-surface-variant hover:text-secondary hover:border-secondary/50 transition-all duration-300 group">
+        <span class="material-symbols-outlined text-xl group-hover:-translate-x-1 transition-transform">chevron_left</span>
+    </button>
+
+    <!-- Page Numbers -->
+    <div class="flex items-center gap-2">
+        <button class="w-10 h-10 flex items-center justify-center border border-secondary bg-secondary/10 text-secondary font-label-sm text-label-sm transition-all duration-300">
+            1
+        </button>
+        <button class="w-10 h-10 flex items-center justify-center border border-outline-variant/20 bg-surface-container-lowest/50 text-on-surface-variant hover:text-secondary hover:border-secondary/50 font-label-sm text-label-sm transition-all duration-300">
+            2
+        </button>
+        <button class="w-10 h-10 flex items-center justify-center border border-outline-variant/20 bg-surface-container-lowest/50 text-on-surface-variant hover:text-secondary hover:border-secondary/50 font-label-sm text-label-sm transition-all duration-300">
+            3
+        </button>
+        <span class="px-2 text-on-surface-variant/40">...</span>
+        <button class="w-10 h-10 flex items-center justify-center border border-outline-variant/20 bg-surface-container-lowest/50 text-on-surface-variant hover:text-secondary hover:border-secondary/50 font-label-sm text-label-sm transition-all duration-300">
+            12
+        </button>
+    </div>
+
+    <!-- Next Button -->
+    <button class="w-10 h-10 flex items-center justify-center border border-outline-variant/20 bg-surface-container-lowest/50 text-on-surface-variant hover:text-secondary hover:border-secondary/50 transition-all duration-300 group">
+        <span class="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">chevron_right</span>
+    </button>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full relative bottom-0 bg-surface-container-lowest border-t border-outline-variant/10 flex flex-col md:flex-row justify-between items-center px-margin-desktop py-12">
+<div class="flex flex-col gap-4 mb-8 md:mb-0">
+<h3 class="font-headline-md text-headline-md text-secondary tracking-widest">1152 Baiye</h3>
+<p class="font-label-sm text-label-sm text-on-surface-variant opacity-60">© 1152 Baiye Guild. All Rights Reserved.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-8">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-colors opacity-80 hover:opacity-100" href="#">Guild Laws</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-colors opacity-80 hover:opacity-100" href="#">Contact High Command</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-colors opacity-80 hover:opacity-100" href="#">Privacy Scrolls</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-secondary transition-colors opacity-80 hover:opacity-100" href="#">Terms of Honor</a>
+</div>
+</footer>
+<!-- Interactive Layer for Detail View (JS) -->
+<script>
+        // Simple logic for the 'Edit/Delete' button stops propagation to the card click
+        document.querySelectorAll('.action-overlay button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.querySelector('span').textContent;
+                console.log(`${action} triggered`);
+            });
+        });
+
+        // Card click effect
+        document.querySelectorAll('.card-hover-effect').forEach(card => {
+            card.addEventListener('click', () => {
+                const name = card.querySelector('.font-bold').textContent.trim();
+                alert(`查看成员档案: ${name}`);
+            });
+        });
+    </script>
+<div class="fixed inset-0 z-[100] flex items-center justify-center opacity-0 pointer-events-none transition-all duration-500" id="member-detail-modal">
+<!-- Backdrop -->
+<div class="absolute inset-0 bg-background/80 backdrop-blur-md"></div>
+<!-- Modal Content -->
+<div class="relative w-full max-w-4xl mx-auto p-margin-mobile md:p-margin-desktop flex flex-col md:flex-row items-center gap-12 scale-90 transition-transform duration-500" id="modal-content-wrapper">
+<!-- Close Button -->
+<button class="absolute top-0 right-0 md:-top-12 md:-right-12 p-4 text-on-surface-variant hover:text-secondary transition-colors" id="close-modal">
+<span class="material-symbols-outlined text-3xl">close</span>
+</button>
+<!-- 3D Card Container -->
+<div class="relative w-full aspect-[3/4] md:w-1/2 bg-surface-container-low border border-outline-variant/20 shadow-2xl overflow-hidden group">
+<div class="absolute inset-0 flex items-center justify-center">
+                {{DATA:ANIMATION:ANIMATION_1}}
+            </div>
+<div class="absolute inset-0 paper-texture pointer-events-none opacity-10"></div>
+<div class="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-background to-transparent opacity-60"></div>
+</div>
+<!-- Member Info -->
+<div class="w-full md:w-1/2 flex flex-col gap-6">
+<div class="border-l-2 border-secondary pl-6">
+<h3 class="font-headline-xl text-headline-xl text-on-surface tracking-widest mb-2" id="modal-member-name">泥丸蛋略</h3>
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-[0.3em]" id="modal-member-role">百业社主</span>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute -left-8 -top-4 opacity-20 text-4xl">format_quote</span>
+<p class="font-headline-md text-headline-md text-on-surface-variant leading-relaxed italic opacity-90" id="modal-member-desc">
+                    剑影寒霜，百业之首。于混沌中执掌乾坤，在墨色里书写传奇。
+                </p>
+</div>
+<div class="mt-8 flex gap-4">
+<div class="h-[1px] flex-grow bg-outline-variant/30 self-center"></div>
+<span class="font-label-sm text-label-sm text-on-surface-variant/40 uppercase tracking-widest">Baiye Archives</span>
+</div>
+</div>
+</div>
+</div>
+
+</body></html>
