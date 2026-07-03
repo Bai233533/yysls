@@ -101,6 +101,27 @@ html, body, #root {
 .animate-marquee { animation: marquee 40s linear infinite; }
 .animate-marquee:hover { animation-play-state: paused; }
 
+/* JS-driven marquee: hover 暂停 */
+.marquee-track:hover { animation-play-state: paused !important; }
+@keyframes marquee-pixel {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(calc(-1 * var(--marquee-offset, 1000px))); }
+}
+
+/* Welcome Toast 动画 */
+@keyframes toast-in {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-30px) scale(0.9); }
+  100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+@keyframes toast-out {
+  0%   { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-20px) scale(0.95); }
+}
+@keyframes toast-sparkle {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50%      { opacity: 0.8; transform: scale(1.5); }
+}
+
 @keyframes modalIn {
   0% { opacity: 0; transform: scale(0.92); }
   100% { opacity: 1; transform: scale(1); }
@@ -384,26 +405,73 @@ html, body, #root {
   100% { opacity: 0; }
 }
 
-/* 3D 透视容器 */
+/* ===== 3D 球形照片墙 ===== */
 .pw-wrap {
-  width: 1300px;
-  height: 620px;
-  perspective: 1100px;
+  width: 1100px;
+  height: 520px;
+  perspective: 1000px;
   perspective-origin: 50% 50%;
   position: relative;
   z-index: 10;
   cursor: grab;
-  margin-top: 40px;
 }
 .pw-wrap:active { cursor: grabbing; }
 
-/* 球体旋转容器 */
 .pw-sphere {
   width: 100%;
   height: 100%;
   position: relative;
   transform-style: preserve-3d;
 }
+
+/* 球面照片 */
+.pw-item {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-style: preserve-3d;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  backface-visibility: hidden;
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+  transition: border-color 0.3s, box-shadow 0.3s, filter 0.3s;
+}
+.pw-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  filter: brightness(0.85) saturate(0.9);
+  transition: filter 0.3s;
+}
+.pw-item:hover {
+  border-color: rgba(233,193,118,0.6);
+  box-shadow: 0 0 16px rgba(193,155,77,0.35), 0 0 30px rgba(0,0,0,0.5);
+  z-index: 100;
+}
+.pw-item:hover img { filter: brightness(1) saturate(1); }
+
+/* 照片标题 */
+.pw-lbl {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 3px 4px;
+  font-size: 8px;
+  font-family: "Noto Serif SC", serif;
+  color: #e9c176;
+  text-align: center;
+  background: linear-gradient(transparent, rgba(0,0,0,0.85));
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pw-item:hover .pw-lbl { opacity: 1; }
 
 /* ===== 成员卡片：流光 + 金边 ===== */
 
@@ -464,55 +532,6 @@ html, body, #root {
   border-color: rgba(230, 180, 90, 0.3) !important;
 }
 
-/* 球面图片 */
-.pw-item {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform-style: preserve-3d;
-  border-radius: 10px;
-  overflow: hidden;
-  cursor: pointer;
-  backface-visibility: hidden;
-  border: 1.5px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.65);
-  transition: border-color 0.3s, box-shadow 0.3s;
-}
-.pw-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  pointer-events: none;
-  filter: brightness(0.82) saturate(0.85);
-  transition: filter 0.3s;
-}
-.pw-item:hover {
-  border-color: rgba(233,193,118,0.6);
-  box-shadow: 0 0 14px rgba(193,155,77,0.35), 0 0 28px rgba(0,0,0,0.5);
-  z-index: 100;
-}
-.pw-item:hover img { filter: brightness(1) saturate(1); }
-
-/* 图片标题 */
-.pw-lbl {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  padding: 2px 3px;
-  font-size: 7px;
-  font-family: "Noto Serif SC", serif;
-  color: #e9c176;
-  text-align: center;
-  background: linear-gradient(transparent, rgba(0,0,0,0.85));
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pw-item:hover .pw-lbl { opacity: 1; }
-
 /* 放大弹窗 */
 .pw-lb {
   position: fixed;
@@ -567,7 +586,43 @@ html, body, #root {
   background: rgba(233,193,118,0.15);
 }
 .pw-lb-x svg { width: 16px; height: 16px; }
+.pw-lb-dl {
+  position: absolute;
+  top: -40px; right: 30px;
+  width: 34px; height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid rgba(233,193,118,0.3);
+  background: rgba(0,0,0,0.8);
+  color: #e9c176;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.pw-lb-dl:hover {
+  border-color: #e9c176;
+  background: rgba(233,193,118,0.15);
+}
+.pw-lb-dl svg { width: 16px; height: 16px; }
 
 @keyframes pw-fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes pw-zoomIn  { from { opacity: 0; transform: scale(0.88); } to { opacity: 1; transform: scale(1); } }
 @keyframes pw-twinkle { 0% { opacity: 0.35; } 100% { opacity: 1; } }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(16px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* 江湖风 Loading 侠客旋转 */
+.wuxia-spinner {
+  animation: wuxiaSpin 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  filter: drop-shadow(0 0 12px rgba(233,193,118,0.3));
+}
+@keyframes wuxiaSpin {
+  0%   { transform: rotate(0deg) scale(1); }
+  25%  { transform: rotate(90deg) scale(1.05); }
+  50%  { transform: rotate(180deg) scale(1); }
+  75%  { transform: rotate(270deg) scale(0.95); }
+  100% { transform: rotate(360deg) scale(1); }
+}

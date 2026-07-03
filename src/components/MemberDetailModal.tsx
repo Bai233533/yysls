@@ -1,12 +1,18 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useStore } from "../store/useStore";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
 export default function MemberDetailModal() {
   const { members, selectedMember, setSelectedMember } = useStore();
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [cardEntered, setCardEntered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  // 照片/视频轮播
+  const [mediaIndex, setMediaIndex] = useState(0);
 
   /* 拖拽状态 */
   const isDragging = useRef(false);
@@ -22,18 +28,58 @@ export default function MemberDetailModal() {
 
   const member = selectedMember ? members.find((m) => m.id === selectedMember.id) ?? null : null;
 
+  // 合并照片和视频为媒体列表
+  const mediaList = useMemo(() => {
+    if (!member) return [];
+    const list: { type: "image" | "video"; url: string }[] = [];
+    // 主图
+    if (member.detailUrl) list.push({ type: "image", url: member.detailUrl });
+    // 详情媒体（独立列）
+    if (member.detailMedia1) list.push({ type: (member.detailMedia1Type || "image") as "image" | "video", url: member.detailMedia1 });
+    if (member.detailMedia2) list.push({ type: (member.detailMedia2Type || "image") as "image" | "video", url: member.detailMedia2 });
+    if (member.detailMedia3) list.push({ type: (member.detailMedia3Type || "image") as "image" | "video", url: member.detailMedia3 });
+    return list;
+  }, [member]);
+
+  const hasMedia = mediaList.length > 1;
+  const currentMedia = mediaList[mediaIndex];
+
+  useBodyScrollLock(visible);
+
   useEffect(() => {
     if (member) {
       setVisible(true);
       setClosing(false);
+      setCardEntered(false);
+      setMediaIndex(0);
       rotY.current = 0;
       rotX.current = 0;
+      // 延迟一帧触发翻转入场动画
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setCardEntered(true));
+      });
     }
   }, [member?.id]);
 
+  // 视频播放 5 秒后循环
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const onTimeUpdate = () => {
+      if (v.currentTime >= 5) {
+        v.currentTime = 0;
+        v.play();
+      }
+    };
+    v.addEventListener("timeupdate", onTimeUpdate);
+    v.play().catch(() => {});
+    return () => v.removeEventListener("timeupdate", onTimeUpdate);
+  }, [mediaIndex, currentMedia]);
+
   const close = () => {
     setClosing(true);
-    setTimeout(() => { setVisible(false); setSelectedMember(null); }, 250);
+    setCardEntered(false); // 触发翻转退出动画
+    setTimeout(() => { setVisible(false); setSelectedMember(null); }, 600);
   };
 
   /* 应用旋转 */
@@ -116,7 +162,8 @@ export default function MemberDetailModal() {
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center select-none"
       style={{
-        animation: closing ? "modalOut 0.25s cubic-bezier(0.4,0,1,1) forwards" : "modalIn 0.35s cubic-bezier(0.16,1,0.3,1) forwards",
+        opacity: closing ? 0 : 1,
+        transition: closing ? "opacity 0.5s ease" : "none",
         userSelect: "none",
         MozUserSelect: "none",
         WebkitUserSelect: "none",
@@ -136,17 +183,32 @@ export default function MemberDetailModal() {
         style={{
           boxShadow: "0 0 0 1px rgba(193,155,77,0.35), 0 0 60px rgba(193,155,77,0.25), 0 25px 80px rgba(0,0,0,0.6)",
           transformStyle: "preserve-3d",
-          transition: "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+          transition: "transform 0.8s cubic-bezier(0.15, 0.85, 0.25, 1), opacity 0.15s ease",
+          transform: cardEntered
+            ? "perspective(1000px) rotateY(0deg) scale(1)"
+            : "perspective(1000px) rotateY(360deg) scale(0.5)",
         }}
         onMouseDown={handleDown}
       >
-        {/* Background Image */}
-        <img
-          src={member.detailUrl}
-          alt={member.name}
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-          draggable={false}
-        />
+        {/* Background Media (photo or video) */}
+        {currentMedia?.type === "video" ? (
+          <video
+            ref={videoRef}
+            src={currentMedia.url}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            muted
+            loop
+            playsInline
+            draggable={false}
+          />
+        ) : (
+          <img
+            src={currentMedia?.url || member.detailUrl}
+            alt={member.name}
+            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+            draggable={false}
+          />
+        )}
 
         {/* 流光效果（持续循环） */}
         <div
@@ -212,6 +274,35 @@ export default function MemberDetailModal() {
           </div>
         </div>
       </div>
+
+      {/* Prominent Navigation Buttons (outside card) */}
+      {hasMedia && (
+        <div className="absolute inset-0 z-[110] pointer-events-none flex items-center justify-between px-2 sm:px-4">
+          <button
+            className="pointer-events-auto w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center bg-black/60 border-2 border-gold-400/50 text-gold-200 hover:bg-black/80 hover:text-gold-100 hover:border-gold-400 transition-all backdrop-blur-md shadow-lg shadow-black/40"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMediaIndex((i) => (i - 1 + mediaList.length) % mediaList.length);
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 sm:w-6 sm:h-6"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <button
+            className="pointer-events-auto w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center bg-black/60 border-2 border-gold-400/50 text-gold-200 hover:bg-black/80 hover:text-gold-100 hover:border-gold-400 transition-all backdrop-blur-md shadow-lg shadow-black/40"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMediaIndex((i) => (i + 1) % mediaList.length);
+            }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 sm:w-6 sm:h-6"><polyline points="9 6 15 12 9 18" /></svg>
+          </button>
+          {/* 媒体计数器 */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-gold-400/30 text-xs text-gold-200 font-song">
+            {mediaIndex + 1} / {mediaList.length}
+            {currentMedia?.type === "video" && " ▶"}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes mc-shine-detail {

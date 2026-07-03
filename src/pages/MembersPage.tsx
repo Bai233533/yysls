@@ -3,11 +3,20 @@ import Navbar from "../components/Navbar";
 import MemberGrid from "../components/MemberGrid";
 import Pagination from "../components/Pagination";
 import { useStore } from "../store/useStore";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function MembersPage() {
   const { currentPage, membersPerPage, members, setCurrentPage } = useStore();
+  const { member: currentUser } = useAuth();
   const totalPages = Math.ceil(members.length / membersPerPage);
-  const paginatedMembers = members.slice(
+  // 按职位排序：社长 > 副社长 > 指挥 > 登录的自己(社员) > 其他社员
+  const ROLE_ORDER: Record<string, number> = { "社长": 0, "副社长": 1, "指挥": 2, "社员": 3 };
+  const sortedMembers = [...members].sort((a, b) => {
+    const aRank = a.id === currentUser?.id && a.role === "社员" ? 2.5 : (ROLE_ORDER[a.role] ?? 4);
+    const bRank = b.id === currentUser?.id && b.role === "社员" ? 2.5 : (ROLE_ORDER[b.role] ?? 4);
+    return aRank - bRank;
+  });
+  const paginatedMembers = sortedMembers.slice(
     (currentPage - 1) * membersPerPage,
     currentPage * membersPerPage
   );
@@ -23,7 +32,7 @@ export default function MembersPage() {
 
         {/* Section Header */}
         <section className="mb-12">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-outline-variant/20 pb-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-outline-variant/20 pb-8">
             <div>
               <h2 className="font-headline-xl text-headline-xl text-on-surface mb-2 tracking-tight">
                 百业成员
@@ -33,6 +42,13 @@ export default function MembersPage() {
                 Members of Baiye
               </p>
             </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+
             <button className="group relative flex items-center gap-3 px-8 py-3 rounded-none btn-metallic text-on-surface font-label-sm text-label-sm uppercase tracking-widest transition-transform active:scale-95 shadow-lg shadow-secondary/10 overflow-hidden">
               <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
               <UserPlus size={16} />
@@ -43,13 +59,6 @@ export default function MembersPage() {
 
         {/* Members Grid */}
         <MemberGrid members={paginatedMembers} currentPage={currentPage} />
-
-        {/* Pagination */}
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
       </main>
 
       {/* Footer */}

@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { X, Upload, RotateCcw, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { useStore } from "../store/useStore";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import LoadingOverlay from "./LoadingOverlay";
 
 interface BackgroundPickerProps {
   onClose: () => void;
@@ -11,7 +13,8 @@ const OUTPUT_W = 1920;
 const OUTPUT_H = Math.round(OUTPUT_W / CROP_RATIO); // 1080
 
 export default function BackgroundPicker({ onClose }: BackgroundPickerProps) {
-  const { heroBackground, setHeroBackground, resetHeroBackground, bgPresets, addBgPreset, removeBgPreset } = useStore();
+  useBodyScrollLock(true);
+  const { heroBackground, setHeroBackground, resetHeroBackground, bgPresets, addBgPreset, removeBgPreset, loadBgPresets } = useStore();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState(heroBackground);
 
@@ -28,6 +31,10 @@ export default function BackgroundPicker({ onClose }: BackgroundPickerProps) {
   const [cropBox, setCropBox] = useState({ x: 0, y: 0, w: 0, h: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, box: { x: 0, y: 0, w: 0, h: 0 } });
+
+  /* 从 Supabase 加载预设 */
+  const [presetLoading, setPresetLoading] = useState(false);
+  useEffect(() => { setPresetLoading(true); loadBgPresets().finally(() => setPresetLoading(false)); }, []);
 
   /* 阻止背景滚动 */
   useEffect(() => {
@@ -168,15 +175,18 @@ export default function BackgroundPicker({ onClose }: BackgroundPickerProps) {
   /* 保存到预设 */
   const [showSavePreset, setShowSavePreset] = useState(false);
   const [presetName, setPresetName] = useState("");
-  const handleSavePreset = () => {
+  const handleSavePreset = async () => {
     if (!presetName.trim()) return;
-    addBgPreset(presetName.trim(), previewUrl);
+    setPresetLoading(true);
+    await addBgPreset(presetName.trim(), previewUrl);
+    setPresetLoading(false);
     setShowSavePreset(false);
     setPresetName("");
   };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
+      <LoadingOverlay show={presetLoading} />
       {/* Backdrop */}
       <div
         className="absolute inset-0"
@@ -242,7 +252,7 @@ export default function BackgroundPicker({ onClose }: BackgroundPickerProps) {
           ) : (
             <div className="grid grid-cols-4 gap-3">
               {bgPresets.map((p) => (
-                <div key={p.url} className="relative group">
+                <div key={p.id} className="relative group">
                   <button
                     onClick={() => handlePresetClick(p.url)}
                     className="w-full aspect-video rounded-lg overflow-hidden transition-all hover:scale-[1.03] block"
@@ -260,7 +270,7 @@ export default function BackgroundPicker({ onClose }: BackgroundPickerProps) {
                     </div>
                   </button>
                   <button
-                    onClick={(e) => { e.stopPropagation(); removeBgPreset(p.url); }}
+                    onClick={(e) => { e.stopPropagation(); setPresetLoading(true); removeBgPreset(p.id).finally(() => setPresetLoading(false)); }}
                     className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                     title="删除预设"
                   >

@@ -1,15 +1,13 @@
 import { create } from "zustand";
-import { members as initialMembers, Member } from "../data/members";
+import { members as initialMembers, Member, ROLE_TO_DB, DB_TO_ROLE } from "../data/members";
 import * as db from "../lib/supabase";
 import type { SupabasePhoto } from "../lib/supabase";
 
 const STORAGE_KEY = "baiye_members";
 const BG_KEY = "baiye_hero_bg";
-const PRESET_KEY = "baiye_bg_presets";
-
 const DEFAULT_BG = "https://picsum.photos/seed/inkmountain/1920/1080";
 
-interface BgPreset { name: string; url: string }
+interface BgPreset { id: number | string; name: string; url: string }
 
 // 照片墙 fallback 数据（Supabase 不可用时使用）
 function getDefaultPhotos(): { src: string; title: string }[] {
@@ -29,7 +27,7 @@ function getDefaultPhotos(): { src: string; title: string }[] {
     "秋浦歌","月下独酌","从军行","出塞曲","凉州词",
   ];
   return names.map((name, i) => ({
-    src: `https://picsum.photos/seed/wall${String(i + 1).padStart(2, "0")}/400/400`,
+    src: `https://picsum.photos/seed/wall${String(i + 1).padStart(2, "0")}/100/100`,
     title: name,
   }));
 }
@@ -45,20 +43,6 @@ function loadBg(): string {
 function saveBg(url: string) {
   try {
     localStorage.setItem(BG_KEY, url);
-  } catch {}
-}
-
-function loadPresets(): BgPreset[] {
-  try {
-    const raw = localStorage.getItem(PRESET_KEY);
-    if (raw) return JSON.parse(raw) as BgPreset[];
-  } catch {}
-  return [];
-}
-
-function savePresets(presets: BgPreset[]) {
-  try {
-    localStorage.setItem(PRESET_KEY, JSON.stringify(presets));
   } catch {}
 }
 
@@ -81,17 +65,21 @@ function fromDB(b: db.SupabaseMember): Member {
   return {
     id: b.id,
     name: b.name,
-    role: b.role as Member["role"],
-    title: b.title,
-    description: b.description,
+    role: DB_TO_ROLE[b.role] ?? b.role,
+    title: b.title ?? "",
     avatarUrl: b.avatar_url,
     detailUrl: b.detail_url,
-    rank: b.rank,
-    karma: b.karma,
-    valor: b.valor,
-    joinDate: b.join_date,
-    isVerified: b.is_verified,
-    signature: b.signature || "",
+    detailMedia1: b.detail_media_1 ?? "",
+    detailMedia2: b.detail_media_2 ?? "",
+    detailMedia3: b.detail_media_3 ?? "",
+    detailMedia1Type: b.detail_media_1_type ?? "image",
+    detailMedia2Type: b.detail_media_2_type ?? "image",
+    detailMedia3Type: b.detail_media_3_type ?? "image",
+    signature: b.signature ?? "",
+    joinDate: b.join_date ?? "",
+    gameId: b.game_id ?? "",
+    userId: b.user_id ?? "",
+    password: b.password ?? "",
   };
 }
 
@@ -99,17 +87,21 @@ function fromDB(b: db.SupabaseMember): Member {
 function toDB(m: Member): Omit<db.SupabaseMember, "id" | "created_at"> {
   return {
     name: m.name,
-    role: m.role,
+    role: ROLE_TO_DB[m.role] ?? m.role,
     title: m.title,
-    description: m.description,
     avatar_url: m.avatarUrl,
     detail_url: m.detailUrl,
-    rank: m.rank,
-    karma: m.karma,
-    valor: m.valor,
+    detail_media_1: m.detailMedia1,
+    detail_media_2: m.detailMedia2,
+    detail_media_3: m.detailMedia3,
+    detail_media_1_type: m.detailMedia1Type,
+    detail_media_2_type: m.detailMedia2Type,
+    detail_media_3_type: m.detailMedia3Type,
+    signature: m.signature,
     join_date: m.joinDate,
-    is_verified: m.isVerified,
-    signature: m.signature || "",
+    game_id: m.gameId,
+    user_id: m.userId || null,
+    password: m.password,
   };
 }
 
@@ -117,7 +109,7 @@ function toDB(m: Member): Omit<db.SupabaseMember, "id" | "created_at"> {
  *  照片墙数据类型
  * ================================================================ */
 
-export type WallPhoto = { src: string; title: string };
+export type WallPhoto = { src: string; title: string; ratio?: string };
 
 /* ================================================================
  *  App State
@@ -134,6 +126,7 @@ interface AppState {
   syncStatus: "idle" | "syncing" | "synced" | "error";
   heroBackground: string;
   bgPresets: BgPreset[];
+  welcomeName: string | null;
 
   // 照片墙状态
   wallPhotos: WallPhoto[];
@@ -144,10 +137,12 @@ interface AppState {
   setEditingMember: (member: Member | null) => void;
   setAddingMember: (v: boolean) => void;
   setDeleteConfirmId: (id: number | null) => void;
+  clearWelcome: () => void;
   setHeroBackground: (url: string) => void;
   resetHeroBackground: () => void;
-  addBgPreset: (name: string, url: string) => void;
-  removeBgPreset: (url: string) => void;
+  addBgPreset: (name: string, url: string) => Promise<void>;
+  removeBgPreset: (id: number | string) => Promise<void>;
+  loadBgPresets: () => Promise<void>;
   addMember: (data: Omit<Member, "id">) => void;
   updateMember: (id: number, data: Partial<Omit<Member, "id">>) => void;
   deleteMember: (id: number) => void;
@@ -172,7 +167,8 @@ export const useStore = create<AppState>((set, get) => ({
   deleteConfirmId: null,
   syncStatus: "idle",
   heroBackground: loadBg(),
-  bgPresets: loadPresets(),
+  bgPresets: [],
+  welcomeName: null,
 
   // 照片墙初始值：先用 fallback，等 Supabase 加载后覆盖
   wallPhotos: getDefaultPhotos(),
@@ -183,6 +179,7 @@ export const useStore = create<AppState>((set, get) => ({
   setEditingMember: (member: Member | null) => set({ editingMember: member }),
   setAddingMember: (v: boolean) => set({ addingMember: v }),
   setDeleteConfirmId: (id: number | null) => set({ deleteConfirmId: id }),
+  clearWelcome: () => set({ welcomeName: null }),
   setHeroBackground: (url: string) => {
     saveBg(url);
     set({ heroBackground: url });
@@ -191,35 +188,34 @@ export const useStore = create<AppState>((set, get) => ({
     saveBg(DEFAULT_BG);
     set({ heroBackground: DEFAULT_BG });
   },
-  addBgPreset: (name: string, url: string) =>
-    set((state) => {
-      const presets = [...state.bgPresets, { name, url }];
-      savePresets(presets);
-      return { bgPresets: presets };
-    }),
-  removeBgPreset: (url: string) =>
-    set((state) => {
-      const presets = state.bgPresets.filter(p => p.url !== url);
-      savePresets(presets);
-      return { bgPresets: presets };
-    }),
+  addBgPreset: async (name: string, url: string) => {
+    const id = await db.createBgPreset(name, url);
+    if (id != null) {
+      set((state) => ({ bgPresets: [...state.bgPresets, { id, name, url }] }));
+    }
+  },
+  removeBgPreset: async (id: number | string) => {
+    if (typeof id === "number") await db.deleteBgPreset(id);
+    set((state) => ({ bgPresets: state.bgPresets.filter((p) => p.id !== id) }));
+  },
+  loadBgPresets: async () => {
+    const data = await db.fetchBgPresets();
+    if (data.length > 0) {
+      set({ bgPresets: data.map((p) => ({ id: p.id, name: p.name, url: p.url })) });
+    }
+  },
 
   /* ---- 从 Supabase 加载照片 ---- */
   loadWallPhotos: async () => {
     try {
       const photos = await db.fetchPhotos();
-      if (photos.length > 0) {
-        set({
-          wallPhotos: photos.map(p => ({ src: p.src, title: p.name })),
-          wallLoading: false,
-        });
-      } else {
-        // Supabase 表为空，使用 fallback
-        set({ wallLoading: false });
-      }
+      set({
+        wallPhotos: photos.map(p => ({ src: p.src, title: p.name, ratio: p.ratio })),
+        wallLoading: false,
+      });
     } catch {
       console.error("[Wall] Failed to load from Supabase, using fallback");
-      set({ wallLoading: false });
+      set({ wallPhotos: [], wallLoading: false });
     }
   },
 
@@ -265,7 +261,7 @@ export const useStore = create<AppState>((set, get) => ({
           saveLocal(synced);
         });
       });
-      return { members, addingMember: false };
+      return { members, addingMember: false, welcomeName: data.name };
     }),
 
   updateMember: (id, data) =>
@@ -275,12 +271,21 @@ export const useStore = create<AppState>((set, get) => ({
       // Async save to cloud - only send changed fields
       const dbData: Record<string, unknown> = {};
       if (data.name !== undefined) dbData.name = data.name;
-      if (data.role !== undefined) dbData.role = data.role;
+      if (data.role !== undefined) dbData.role = ROLE_TO_DB[data.role] ?? data.role;
       if (data.avatarUrl !== undefined) dbData.avatar_url = data.avatarUrl;
       if (data.detailUrl !== undefined) dbData.detail_url = data.detailUrl;
       if (data.title !== undefined) dbData.title = data.title;
-      if (data.description !== undefined) dbData.description = data.description;
       if (data.signature !== undefined) dbData.signature = data.signature;
+      if (data.joinDate !== undefined) dbData.join_date = data.joinDate;
+      if (data.gameId !== undefined) dbData.game_id = data.gameId;
+      if (data.userId !== undefined) dbData.user_id = data.userId;
+      if (data.password !== undefined) dbData.password = data.password;
+      if (data.detailMedia1 !== undefined) dbData.detail_media_1 = data.detailMedia1;
+      if (data.detailMedia2 !== undefined) dbData.detail_media_2 = data.detailMedia2;
+      if (data.detailMedia3 !== undefined) dbData.detail_media_3 = data.detailMedia3;
+      if (data.detailMedia1Type !== undefined) dbData.detail_media_1_type = data.detailMedia1Type;
+      if (data.detailMedia2Type !== undefined) dbData.detail_media_2_type = data.detailMedia2Type;
+      if (data.detailMedia3Type !== undefined) dbData.detail_media_3_type = data.detailMedia3Type;
       db.updateMember(id, dbData).catch(() => {});
       return { members };
     }),
@@ -321,7 +326,7 @@ export const useStore = create<AppState>((set, get) => ({
         async () => {
           console.log("[Realtime] photo 变更，重新拉取...");
           const photos = await db.fetchPhotos();
-          const wallPhotos = photos.map((p: SupabasePhoto) => ({ src: p.src, title: p.name }));
+          const wallPhotos = photos.map((p: SupabasePhoto) => ({ src: p.src, title: p.name, ratio: p.ratio }));
           useStore.setState({ wallPhotos });
         }
       )

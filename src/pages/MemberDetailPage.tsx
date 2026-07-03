@@ -1,5 +1,5 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Pencil, BadgeCheck } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import Card3D from "../components/Card3D";
 import { members } from "../data/members";
 
@@ -59,9 +59,6 @@ export default function MemberDetailPage() {
               <h1 className="font-headline-xl text-headline-xl text-white drop-shadow-lg tracking-tight">
                 {member.name}
               </h1>
-              <p className="font-body-md text-body-md text-on-surface-variant opacity-80 italic">
-                {member.description}
-              </p>
             </div>
 
             {/* Floating Glass Nameplate */}
@@ -76,11 +73,6 @@ export default function MemberDetailPage() {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    {member.isVerified && (
-                      <div className="absolute -bottom-1 -right-1 bg-secondary rounded-full p-0.5">
-                        <BadgeCheck size={10} className="text-on-secondary" />
-                      </div>
-                    )}
                   </div>
                   <div className="flex flex-col">
                     <span className="font-body-lg text-body-lg text-white font-bold">
@@ -91,9 +83,6 @@ export default function MemberDetailPage() {
                     </span>
                   </div>
                 </div>
-                <button className="bg-secondary-container hover:bg-secondary hover:text-on-secondary text-secondary font-label-sm text-label-sm px-4 py-2 rounded-lg transition-all duration-300 active:scale-95 border border-secondary/20 shadow-inner">
-                  查看更多
-                </button>
               </div>
             </div>
 
@@ -104,38 +93,14 @@ export default function MemberDetailPage() {
             </button>
           </div>
 
-          {/* Stats Section */}
-          <div className="mt-16 w-full max-w-xl flex flex-col items-center">
-            <div className="ink-fade-divider w-full mb-2" />
-            <div className="flex gap-8">
-              <div className="text-center">
-                <p className="font-headline-md text-headline-md text-secondary">
-                  {member.rank}
-                </p>
-                <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  RANK
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="font-headline-md text-headline-md text-secondary">
-                  {member.karma}
-                </p>
-                <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  KARMA
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="font-headline-md text-headline-md text-secondary">
-                  {member.valor >= 1000
-                    ? `${(member.valor / 1000).toFixed(1)}k`
-                    : member.valor}
-                </p>
-                <p className="font-label-sm text-label-sm text-on-surface-variant">
-                  VALOR
-                </p>
-              </div>
+          {/* Signature */}
+          {member.signature && (
+            <div className="mt-12 w-full max-w-xl text-center">
+              <p className="font-body-md text-on-surface-variant italic">
+                "{member.signature}"
+              </p>
             </div>
-          </div>
+          )}
         </div>
       </main>
     </div>

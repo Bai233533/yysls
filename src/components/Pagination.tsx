@@ -23,7 +23,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange, vari
   const fontClass = isLight ? "font-medium" : "font-song";
 
   return (
-    <div className="mt-10 flex justify-center items-center gap-2">
+    <div className="flex justify-center items-center gap-2">
       <button
         className={`w-8 h-8 flex items-center justify-center rounded-lg transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed ${btnBase}`}
         onClick={() => onPageChange(Math.max(1, currentPage - 1))}

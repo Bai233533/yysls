@@ -2,6 +2,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { useRef, useCallback } from "react";
 import type { Member } from "../data/members";
 import { useStore } from "../store/useStore";
+import { usePermission } from "../hooks/usePermission";
 
 interface MemberCardProps {
   member: Member;
@@ -26,6 +27,13 @@ export default function MemberCard({ member, showActions = true }: MemberCardPro
   const setSelectedMember = useStore((s) => s.setSelectedMember);
   const setEditingMember = useStore((s) => s.setEditingMember);
   const setDeleteConfirmId = useStore((s) => s.setDeleteConfirmId);
+  const { showCardActions, member: currentUser } = usePermission();
+  const isSelf = currentUser?.id === member.id;
+  const isAdmin = showCardActions; // 社长/副社长
+  // 编辑按钮：自己 || 管理层（副社长不能编辑社长）
+  const canEditThisCard = isSelf || (isAdmin && !(currentUser?.role === "副社长" && member.role === "社长"));
+  // 删除按钮：仅管理层对别人
+  const canDeleteThisCard = isAdmin && !isSelf && !(currentUser?.role === "副社长" && member.role === "社长");
   const roleColor = getRoleColor(member.role);
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -77,8 +85,8 @@ export default function MemberCard({ member, showActions = true }: MemberCardPro
           src={member.avatarUrl}
           alt={member.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          style={{ filter: "sepia(0.1) contrast(1.02)" }}
           loading="lazy"
+          decoding="async"
         />
 
         {/* 古风水印边缘 */}
@@ -102,30 +110,47 @@ export default function MemberCard({ member, showActions = true }: MemberCardPro
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
 
         {/* 操作按钮：右下角 */}
-        {showActions && (
+        {(canEditThisCard || canDeleteThisCard) && (
           <div className="absolute bottom-2.5 right-2.5 flex gap-1.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <button
-              className="w-7 h-7 flex items-center justify-center rounded bg-black/70 text-gold-200/70 hover:text-gold-200 hover:bg-black/90 transition-all border border-gold-400/20 backdrop-blur-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditingMember(member);
-              }}
-              title="编辑"
-            >
-              <Pencil size={12} />
-            </button>
-            <button
-              className="w-7 h-7 flex items-center justify-center rounded bg-black/70 text-gold-200/70 hover:text-red-400 hover:bg-black/90 transition-all border border-gold-400/20 backdrop-blur-sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteConfirmId(member.id);
-              }}
-              title="删除"
-            >
-              <Trash2 size={12} />
-            </button>
+            {canEditThisCard && (
+              <button
+                className="w-7 h-7 flex items-center justify-center rounded bg-black/70 text-gold-200/70 hover:text-gold-200 hover:bg-black/90 transition-all border border-gold-400/20 backdrop-blur-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingMember(member);
+                }}
+                title="编辑"
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+            {canDeleteThisCard && (
+              <button
+                className="w-7 h-7 flex items-center justify-center rounded bg-black/70 text-gold-200/70 hover:text-red-400 hover:bg-black/90 transition-all border border-gold-400/20 backdrop-blur-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteConfirmId(member.id);
+                }}
+                title="删除"
+              >
+                <Trash2 size={12} />
+              </button>
+            )}
           </div>
         )}
+      </div>
+
+      {/* 底部名字栏 */}
+      <div
+        className="relative px-3 py-2.5 flex items-center justify-center"
+        style={{ background: "rgba(10,8,6,0.92)" }}
+      >
+        <span
+          className="font-song text-sm tracking-widest truncate"
+          style={{ color: "#e9c176" }}
+        >
+          {member.name}
+        </span>
       </div>
 
       {/* 卡片底部金边装饰 */}

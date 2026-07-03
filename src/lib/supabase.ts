@@ -14,16 +14,42 @@ export interface SupabaseMember {
   name: string;
   role: string;
   title: string;
-  description: string;
   avatar_url: string;
   detail_url: string;
-  rank: string;
-  karma: number;
-  valor: number;
-  join_date: string;
-  is_verified: boolean;
-  signature: string;
+  detail_media_1?: string;
+  detail_media_2?: string;
+  detail_media_3?: string;
+  detail_media_1_type?: string;
+  detail_media_2_type?: string;
+  detail_media_3_type?: string;
+  signature?: string;
+  join_date?: string;
+  game_id?: string;
+  user_id?: string;
+  password?: string;
   created_at?: string;
+}
+
+/* ================================================================
+ *  Storage 上传（照片/视频）
+ * ================================================================ */
+export async function uploadToStorage(
+  file: File,
+  bucket: string,
+  folder: string
+): Promise<string | null> {
+  const ext = file.name.split(".").pop() || "bin";
+  const path = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+  if (error) {
+    console.error("[Storage] upload error:", error);
+    return null;
+  }
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+  return data?.publicUrl ?? null;
 }
 
 // Fetch all members
@@ -89,6 +115,7 @@ export interface SupabasePhoto {
   src: string;
   sort_order: number;
   is_active: boolean;
+  ratio?: string;  // "4:3" | "3:4" | "1:1" | "16:9" | "3:2"
   created_at?: string;
 }
 
@@ -154,6 +181,57 @@ export async function deletePhoto(id: number): Promise<boolean> {
     .eq("id", id);
   if (error) {
     console.error("[Supabase] deletePhoto error:", error);
+    return false;
+  }
+  return true;
+}
+
+/* ================================================================
+ *  背景预设 (bg_preset) 相关接口
+ * ================================================================ */
+
+export interface SupabaseBgPreset {
+  id: number;
+  name: string;
+  url: string;
+  created_at?: string;
+}
+
+// Fetch all presets, ordered by created_at
+export async function fetchBgPresets(): Promise<SupabaseBgPreset[]> {
+  const { data, error } = await supabase
+    .from("bg_preset")
+    .select("*")
+    .order("created_at", { ascending: true });
+  if (error) {
+    console.error("[Supabase] fetchBgPresets error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+// Create a preset
+export async function createBgPreset(name: string, url: string): Promise<number | null> {
+  const { data, error } = await supabase
+    .from("bg_preset")
+    .insert([{ name, url }])
+    .select("id")
+    .single();
+  if (error) {
+    console.error("[Supabase] createBgPreset error:", error);
+    return null;
+  }
+  return data?.id || null;
+}
+
+// Delete a preset by id
+export async function deleteBgPreset(id: number): Promise<boolean> {
+  const { error } = await supabase
+    .from("bg_preset")
+    .delete()
+    .eq("id", id);
+  if (error) {
+    console.error("[Supabase] deleteBgPreset error:", error);
     return false;
   }
   return true;

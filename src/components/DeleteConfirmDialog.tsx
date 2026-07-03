@@ -1,8 +1,10 @@
 import { AlertTriangle } from "lucide-react";
 import { useStore } from "../store/useStore";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
 export default function DeleteConfirmDialog() {
   const { deleteConfirmId, setDeleteConfirmId, deleteMember, members } = useStore();
+  useBodyScrollLock(deleteConfirmId !== null);
   if (deleteConfirmId === null) return null;
   const member = members.find((m) => m.id === deleteConfirmId);
   const memberName = member?.name ?? "该成员";
