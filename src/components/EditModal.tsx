@@ -19,6 +19,7 @@ export default function EditModal() {
 
   const [name, setName] = useState("");
   const [role, setRole] = useState("社员");
+  const [signature, setSignature] = useState("");
   const [avatarPreview, setAvatarPreview] = useState("");
   const [detailPreview, setDetailPreview] = useState("");
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -28,11 +29,13 @@ export default function EditModal() {
     if (editingMember) {
       setName(editingMember.name);
       setRole(editingMember.role);
+      setSignature(editingMember.signature || "");
       setAvatarPreview(editingMember.avatarUrl);
       setDetailPreview(editingMember.detailUrl);
     } else if (addingMember) {
       setName("");
       setRole("社员");
+      setSignature("");
       setAvatarPreview("");
       setDetailPreview("");
     }
@@ -67,9 +70,10 @@ export default function EditModal() {
         valor: 0,
         joinDate: new Date().toISOString().split("T")[0],
         isVerified: false,
+        signature,
       });
     } else if (editingMember) {
-      updateMember(editingMember.id, { name, role, avatarUrl: avatarPreview, detailUrl: detailPreview });
+      updateMember(editingMember.id, { name, role, avatarUrl: avatarPreview, detailUrl: detailPreview, signature });
       setEditingMember(null);
     }
   };
@@ -157,6 +161,14 @@ export default function EditModal() {
                 >{r}</button>
               ))}
             </div>
+          </div>
+          {/* Signature */}
+          <div>
+            <label className="block text-sm font-song text-ink-700 mb-2">个性签名</label>
+            <input type="text" value={signature} onChange={(e) => setSignature(e.target.value)}
+              className="w-full px-4 py-2.5 rounded border border-gold-400/20 text-sm text-ink-800 font-song bg-rice-50 focus:outline-none focus:border-gold-400 transition-all"
+              placeholder="输入个性签名"
+            />
           </div>
           {/* Actions */}
           <div className="flex gap-3 pt-2">

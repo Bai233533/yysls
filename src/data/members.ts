@@ -11,6 +11,7 @@ export interface Member {
   valor: number;
   joinDate: string;
   isVerified: boolean;
+  signature: string;
 }
 
 export const ROLES = ["社长", "副社长", "社员", "指挥"] as const;
@@ -29,6 +30,7 @@ export const members: Member[] = [
     valor: 2400,
     joinDate: "2024-01-15",
     isVerified: true,
+    signature: "混沌中执掌乾坤，墨色里书写传奇。",
   },
   {
     id: 2,
@@ -43,6 +45,7 @@ export const members: Member[] = [
     valor: 1800,
     joinDate: "2024-02-20",
     isVerified: true,
+    signature: "月色如水，静守安宁。",
   },
   {
     id: 3,
@@ -57,6 +60,7 @@ export const members: Member[] = [
     valor: 1650,
     joinDate: "2024-03-10",
     isVerified: true,
+    signature: "迷雾之中，一剑光寒。",
   },
   {
     id: 4,
@@ -71,6 +75,7 @@ export const members: Member[] = [
     valor: 1400,
     joinDate: "2024-04-05",
     isVerified: true,
+    signature: "祈风唤雨，运筹帷幄。",
   },
   {
     id: 5,
@@ -85,6 +90,7 @@ export const members: Member[] = [
     valor: 1200,
     joinDate: "2024-05-12",
     isVerified: true,
+    signature: "云起暮色，调度有方。",
   },
   {
     id: 6,
@@ -99,6 +105,7 @@ export const members: Member[] = [
     valor: 1100,
     joinDate: "2024-06-18",
     isVerified: true,
+    signature: "迷糊之中自有真意。",
   },
   {
     id: 7,
@@ -113,6 +120,7 @@ export const members: Member[] = [
     valor: 950,
     joinDate: "2024-07-22",
     isVerified: true,
+    signature: "同人同行，万歌齐鸣。",
   },
   {
     id: 8,
@@ -127,6 +135,7 @@ export const members: Member[] = [
     valor: 750,
     joinDate: "2024-08-30",
     isVerified: false,
+    signature: "江湖路远，终有归属。",
   },
   {
     id: 9,
@@ -141,6 +150,7 @@ export const members: Member[] = [
     valor: 880,
     joinDate: "2024-09-14",
     isVerified: true,
+    signature: "青竹挺立，淡泊明志。",
   },
   {
     id: 10,
@@ -155,6 +165,7 @@ export const members: Member[] = [
     valor: 600,
     joinDate: "2024-10-08",
     isVerified: false,
+    signature: "温润如玉，未来可望。",
   },
   {
     id: 11,
@@ -169,6 +180,7 @@ export const members: Member[] = [
     valor: 500,
     joinDate: "2024-11-01",
     isVerified: false,
+    signature: "叶落如烟，静待花开。",
   },
   {
     id: 12,
@@ -183,6 +195,7 @@ export const members: Member[] = [
     valor: 450,
     joinDate: "2024-11-15",
     isVerified: false,
+    signature: "雷裂长空，冲锋在前。",
   },
   {
     id: 13,
@@ -197,6 +210,7 @@ export const members: Member[] = [
     valor: 400,
     joinDate: "2024-12-01",
     isVerified: false,
+    signature: "凤鸣九天，独步江湖。",
   },
   {
     id: 14,
@@ -211,6 +225,7 @@ export const members: Member[] = [
     valor: 300,
     joinDate: "2024-12-15",
     isVerified: false,
+    signature: "自得其乐，悠然自得。",
   },
   {
     id: 15,
@@ -225,5 +240,6 @@ export const members: Member[] = [
     valor: 250,
     joinDate: "2025-01-01",
     isVerified: false,
+    signature: "短衣快马，意气风发。",
   },
 ];

@@ -91,6 +91,7 @@ function fromDB(b: db.SupabaseMember): Member {
     valor: b.valor,
     joinDate: b.join_date,
     isVerified: b.is_verified,
+    signature: b.signature || "",
   };
 }
 
@@ -108,6 +109,7 @@ function toDB(m: Member): Omit<db.SupabaseMember, "id" | "created_at"> {
     valor: m.valor,
     join_date: m.joinDate,
     is_verified: m.isVerified,
+    signature: m.signature || "",
   };
 }
 
@@ -153,6 +155,11 @@ interface AppState {
 
   // 照片墙方法
   loadWallPhotos: () => Promise<void>;
+
+  // Realtime 订阅
+  _realtimeChannel: ReturnType<typeof db.supabase.channel> | null;
+  subscribeToChanges: () => void;
+  unsubscribeFromChanges: () => void;
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -234,6 +241,8 @@ export const useStore = create<AppState>((set, get) => ({
         }
         set({ syncStatus: "synced" });
       }
+      // 启动 Realtime 订阅，自动接收后续变更
+      get().subscribeToChanges();
     } catch (e) {
       console.error("[Sync] Error:", e);
       set({ syncStatus: "error" });
@@ -271,6 +280,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (data.detailUrl !== undefined) dbData.detail_url = data.detailUrl;
       if (data.title !== undefined) dbData.title = data.title;
       if (data.description !== undefined) dbData.description = data.description;
+      if (data.signature !== undefined) dbData.signature = data.signature;
       db.updateMember(id, dbData).catch(() => {});
       return { members };
     }),
@@ -283,4 +293,48 @@ export const useStore = create<AppState>((set, get) => ({
       db.deleteMember(id).catch(() => {});
       return { members, deleteConfirmId: null };
     }),
+
+  /* ---- Supabase Realtime：监听成员/照片变更，自动同步给所有在线用户 ---- */
+  _realtimeChannel: null as ReturnType<typeof db.supabase.channel> | null,
+
+  subscribeToChanges: () => {
+    const state = get();
+    // 防止重复订阅
+    if (state._realtimeChannel) return;
+
+    const channel = db.supabase
+      .channel("db-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "member" },
+        async () => {
+          console.log("[Realtime] member 变更，重新拉取...");
+          const cloudMembers = await db.fetchAll();
+          const members = cloudMembers.map(fromDB);
+          useStore.setState({ members });
+          saveLocal(members);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "photo" },
+        async () => {
+          console.log("[Realtime] photo 变更，重新拉取...");
+          const photos = await db.fetchPhotos();
+          const wallPhotos = photos.map((p: SupabasePhoto) => ({ src: p.src, title: p.name }));
+          useStore.setState({ wallPhotos });
+        }
+      )
+      .subscribe();
+
+    useStore.setState({ _realtimeChannel: channel });
+  },
+
+  unsubscribeFromChanges: () => {
+    const channel = get()._realtimeChannel;
+    if (channel) {
+      db.supabase.removeChannel(channel);
+      useStore.setState({ _realtimeChannel: null });
+    }
+  },
 }));

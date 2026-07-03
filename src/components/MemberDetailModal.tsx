@@ -206,8 +206,8 @@ export default function MemberDetailModal() {
               <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover pointer-events-none" draggable={false} />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-gold-100 text-sm font-song font-semibold truncate">@{member.title}</span>
-              <span className="text-gold-200/50 text-xs font-song truncate">{member.role}</span>
+              <span className="text-gold-100 text-sm font-song font-semibold truncate">@{member.name}</span>
+              <span className="text-gold-200/50 text-xs font-song truncate">{member.signature || member.role}</span>
             </div>
           </div>
         </div>

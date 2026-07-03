@@ -22,6 +22,7 @@ export interface SupabaseMember {
   valor: number;
   join_date: string;
   is_verified: boolean;
+  signature: string;
   created_at?: string;
 }
 
