@@ -7,7 +7,7 @@ const STORAGE_KEY = "baiye_members";
 const BG_KEY = "baiye_hero_bg";
 const DEFAULT_BG = "https://picsum.photos/seed/inkmountain/1920/1080";
 
-interface BgPreset { id: number | string; name: string; url: string }
+interface BgPreset { id: number; name: string; img: string }
 
 // 照片墙 fallback 数据（Supabase 不可用时使用）
 function getDefaultPhotos(): { src: string; title: string }[] {
@@ -128,6 +128,14 @@ interface AppState {
   bgPresets: BgPreset[];
   welcomeName: string | null;
 
+  // 背景音乐
+  bgMuted: boolean;
+  bgVolume: number;
+  bgPlaying: boolean;
+  toggleBgMute: () => void;
+  setBgVolume: (v: number) => void;
+  setBgPlaying: (p: boolean) => void;
+
   // 照片墙状态
   wallPhotos: WallPhoto[];
   wallLoading: boolean;
@@ -144,7 +152,7 @@ interface AppState {
   removeBgPreset: (id: number | string) => Promise<void>;
   loadBgPresets: () => Promise<void>;
   addMember: (data: Omit<Member, "id">) => void;
-  updateMember: (id: number, data: Partial<Omit<Member, "id">>) => void;
+  updateMember: (id: number, data: Partial<Omit<Member, "id">>) => Promise<boolean>;
   deleteMember: (id: number) => void;
   syncFromCloud: () => Promise<void>;
 
@@ -153,6 +161,7 @@ interface AppState {
 
   // Realtime 订阅
   _realtimeChannel: ReturnType<typeof db.supabase.channel> | null;
+  _syncInProgress: boolean;
   subscribeToChanges: () => void;
   unsubscribeFromChanges: () => void;
 }
@@ -169,10 +178,21 @@ export const useStore = create<AppState>((set, get) => ({
   heroBackground: loadBg(),
   bgPresets: [],
   welcomeName: null,
+  bgMuted: (() => { try { return localStorage.getItem("baiye_bg_muted") === "true"; } catch { return false; } })(),
+  bgVolume: 0.3,
+  bgPlaying: false,
+  toggleBgMute: () => {
+    const newMuted = !get().bgMuted;
+    set({ bgMuted: newMuted });
+    try { localStorage.setItem("baiye_bg_muted", String(newMuted)); } catch {}
+  },
+  setBgVolume: (v) => set({ bgVolume: v, bgMuted: v === 0 }),
+  setBgPlaying: (p) => set({ bgPlaying: p }),
 
   // 照片墙初始值：先用 fallback，等 Supabase 加载后覆盖
   wallPhotos: getDefaultPhotos(),
   wallLoading: true,
+  _syncInProgress: false,
 
   setCurrentPage: (page: number) => set({ currentPage: page }),
   setSelectedMember: (member: Member | null) => set({ selectedMember: member }),
@@ -180,29 +200,34 @@ export const useStore = create<AppState>((set, get) => ({
   setAddingMember: (v: boolean) => set({ addingMember: v }),
   setDeleteConfirmId: (id: number | null) => set({ deleteConfirmId: id }),
   clearWelcome: () => set({ welcomeName: null }),
-  setHeroBackground: (url: string) => {
+  setHeroBackground: async (url: string) => {
     saveBg(url);
     set({ heroBackground: url });
-  },
-  resetHeroBackground: () => {
-    saveBg(DEFAULT_BG);
-    set({ heroBackground: DEFAULT_BG });
-  },
-  addBgPreset: async (name: string, url: string) => {
-    const id = await db.createBgPreset(name, url);
-    if (id != null) {
-      set((state) => ({ bgPresets: [...state.bgPresets, { id, name, url }] }));
+    // 同步到数据库
+    const success = await db.setConfig("hero_background", url);
+    if (!success) {
+      console.error("[Store] 保存背景图片到数据库失败");
     }
   },
-  removeBgPreset: async (id: number | string) => {
-    if (typeof id === "number") await db.deleteBgPreset(id);
+  resetHeroBackground: async () => {
+    saveBg(DEFAULT_BG);
+    set({ heroBackground: DEFAULT_BG });
+    // 同步到数据库
+    await db.setConfig("hero_background", DEFAULT_BG);
+  },
+  addBgPreset: async (name: string, img: string) => {
+    const id = await db.createBgPreset(name, img);
+    if (id != null) {
+      set((state) => ({ bgPresets: [...state.bgPresets, { id, name, img }] }));
+    }
+  },
+  removeBgPreset: async (id: number) => {
+    await db.deleteBgPreset(id);
     set((state) => ({ bgPresets: state.bgPresets.filter((p) => p.id !== id) }));
   },
   loadBgPresets: async () => {
     const data = await db.fetchBgPresets();
-    if (data.length > 0) {
-      set({ bgPresets: data.map((p) => ({ id: p.id, name: p.name, url: p.url })) });
-    }
+    set({ bgPresets: data.map((p) => ({ id: p.id, name: p.name, img: p.img })) });
   },
 
   /* ---- 从 Supabase 加载照片 ---- */
@@ -221,27 +246,74 @@ export const useStore = create<AppState>((set, get) => ({
 
   /* ---- 成员同步 ---- */
   syncFromCloud: async () => {
-    set({ syncStatus: "syncing" });
+    // 防止并发执行（React StrictMode 会触发两次）
+    const state = get();
+    if (state._syncInProgress) return;
+    set({ syncStatus: "syncing", _syncInProgress: true });
     try {
-      const cloudMembers = await db.fetchAll();
-      if (cloudMembers.length > 0) {
-        const members = cloudMembers.map(fromDB);
-        set({ members });
-        saveLocal(members);
-        set({ syncStatus: "synced" });
-      } else {
-        // Cloud is empty, push initial data
-        const local = loadLocal();
-        for (const m of local) {
-          await db.createMember(toDB(m));
+      // 并行加载成员、照片、背景和预设数据，提升加载速度
+      const [cloudMembersResult, photosResult, bgResult, presetsResult] = await Promise.allSettled([
+        db.fetchAll(),
+        db.fetchPhotos(),
+        db.getConfig("hero_background"),
+        db.fetchBgPresets()
+      ]);
+
+      // 处理成员数据
+      if (cloudMembersResult.status === "fulfilled") {
+        const cloudMembers = cloudMembersResult.value;
+        if (cloudMembers.length > 0) {
+          const members = cloudMembers.map(fromDB);
+          set({ members });
+          saveLocal(members);
+        } else {
+          // Cloud is empty, push initial data（按 name 去重，防止重复插入）
+          const local = loadLocal();
+          const existingNames = new Set<string>();
+          for (const m of local) {
+            if (!existingNames.has(m.name)) {
+              existingNames.add(m.name);
+              await db.createMember(toDB(m));
+            }
+          }
+          // 推送后重新拉取，确保本地状态与云端一致
+          const cloudAfter = await db.fetchAll();
+          if (cloudAfter.length > 0) {
+            const members = cloudAfter.map(fromDB);
+            set({ members });
+            saveLocal(members);
+          }
         }
-        set({ syncStatus: "synced" });
       }
+
+      // 处理照片数据
+      if (photosResult.status === "fulfilled") {
+        const photos = photosResult.value;
+        set({
+          wallPhotos: photos.map(p => ({ src: p.src, title: p.name, ratio: p.ratio })),
+          wallLoading: false,
+        });
+      }
+
+      // 处理背景图片配置
+      if (bgResult.status === "fulfilled" && bgResult.value) {
+        const bgUrl = bgResult.value;
+        saveBg(bgUrl);
+        set({ heroBackground: bgUrl });
+      }
+
+      // 处理背景预设
+      if (presetsResult.status === "fulfilled") {
+        const presets = presetsResult.value;
+        set({ bgPresets: presets.map(p => ({ id: p.id, name: p.name, img: p.img })) });
+      }
+
+      set({ syncStatus: "synced", _syncInProgress: false });
       // 启动 Realtime 订阅，自动接收后续变更
       get().subscribeToChanges();
     } catch (e) {
       console.error("[Sync] Error:", e);
-      set({ syncStatus: "error" });
+      set({ syncStatus: "error", wallLoading: false, _syncInProgress: false });
     }
   },
 
@@ -264,31 +336,37 @@ export const useStore = create<AppState>((set, get) => ({
       return { members, addingMember: false, welcomeName: data.name };
     }),
 
-  updateMember: (id, data) =>
+  updateMember: async (id, data) => {
+    // 乐观更新本地状态
     set((state) => {
       const members = state.members.map((m) => (m.id === id ? { ...m, ...data } : m));
       saveLocal(members);
-      // Async save to cloud - only send changed fields
-      const dbData: Record<string, unknown> = {};
-      if (data.name !== undefined) dbData.name = data.name;
-      if (data.role !== undefined) dbData.role = ROLE_TO_DB[data.role] ?? data.role;
-      if (data.avatarUrl !== undefined) dbData.avatar_url = data.avatarUrl;
-      if (data.detailUrl !== undefined) dbData.detail_url = data.detailUrl;
-      if (data.title !== undefined) dbData.title = data.title;
-      if (data.signature !== undefined) dbData.signature = data.signature;
-      if (data.joinDate !== undefined) dbData.join_date = data.joinDate;
-      if (data.gameId !== undefined) dbData.game_id = data.gameId;
-      if (data.userId !== undefined) dbData.user_id = data.userId;
-      if (data.password !== undefined) dbData.password = data.password;
-      if (data.detailMedia1 !== undefined) dbData.detail_media_1 = data.detailMedia1;
-      if (data.detailMedia2 !== undefined) dbData.detail_media_2 = data.detailMedia2;
-      if (data.detailMedia3 !== undefined) dbData.detail_media_3 = data.detailMedia3;
-      if (data.detailMedia1Type !== undefined) dbData.detail_media_1_type = data.detailMedia1Type;
-      if (data.detailMedia2Type !== undefined) dbData.detail_media_2_type = data.detailMedia2Type;
-      if (data.detailMedia3Type !== undefined) dbData.detail_media_3_type = data.detailMedia3Type;
-      db.updateMember(id, dbData).catch(() => {});
       return { members };
-    }),
+    });
+    // 异步更新云端
+    const dbData: Record<string, unknown> = {};
+    if (data.name !== undefined) dbData.name = data.name;
+    if (data.role !== undefined) dbData.role = ROLE_TO_DB[data.role] ?? data.role;
+    if (data.avatarUrl !== undefined) dbData.avatar_url = data.avatarUrl;
+    if (data.detailUrl !== undefined) dbData.detail_url = data.detailUrl;
+    if (data.title !== undefined) dbData.title = data.title;
+    if (data.signature !== undefined) dbData.signature = data.signature;
+    if (data.joinDate !== undefined) dbData.join_date = data.joinDate;
+    if (data.gameId !== undefined) dbData.game_id = data.gameId;
+    if (data.userId !== undefined) dbData.user_id = data.userId;
+    if (data.password !== undefined) dbData.password = data.password;
+    if (data.detailMedia1 !== undefined) dbData.detail_media_1 = data.detailMedia1;
+    if (data.detailMedia2 !== undefined) dbData.detail_media_2 = data.detailMedia2;
+    if (data.detailMedia3 !== undefined) dbData.detail_media_3 = data.detailMedia3;
+    if (data.detailMedia1Type !== undefined) dbData.detail_media_1_type = data.detailMedia1Type;
+    if (data.detailMedia2Type !== undefined) dbData.detail_media_2_type = data.detailMedia2Type;
+    if (data.detailMedia3Type !== undefined) dbData.detail_media_3_type = data.detailMedia3Type;
+    const success = await db.updateMember(id, dbData);
+    if (!success) {
+      console.error("[Store] 更新成员到数据库失败, id:", id);
+    }
+    return success;
+  },
 
   deleteMember: (id) =>
     set((state) => {
@@ -299,7 +377,7 @@ export const useStore = create<AppState>((set, get) => ({
       return { members, deleteConfirmId: null };
     }),
 
-  /* ---- Supabase Realtime：监听成员/照片变更，自动同步给所有在线用户 ---- */
+  /* ---- Supabase Realtime：监听成员/照片/配置变更，自动同步给所有在线用户 ---- */
   _realtimeChannel: null as ReturnType<typeof db.supabase.channel> | null,
 
   subscribeToChanges: () => {
@@ -328,6 +406,32 @@ export const useStore = create<AppState>((set, get) => ({
           const photos = await db.fetchPhotos();
           const wallPhotos = photos.map((p: SupabasePhoto) => ({ src: p.src, title: p.name, ratio: p.ratio }));
           useStore.setState({ wallPhotos });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "site_config" },
+        async (payload) => {
+          console.log("[Realtime] site_config 变更...", payload);
+          const newRecord = payload.new as { key: string; value: string } | null;
+          if (!newRecord) return;
+
+          // 背景图片变更
+          if (newRecord.key === "hero_background" && newRecord.value) {
+            saveBg(newRecord.value);
+            useStore.setState({ heroBackground: newRecord.value });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "bg_preset" },
+        async () => {
+          console.log("[Realtime] bg_preset 变更，重新拉取...");
+          const presets = await db.fetchBgPresets();
+          useStore.setState({ 
+            bgPresets: presets.map(p => ({ id: p.id, name: p.name, img: p.img }))
+          });
         }
       )
       .subscribe();

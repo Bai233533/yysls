@@ -53,23 +53,23 @@ function ImageUpload({
   );
 }
 
-/** 详情媒体槽位 */
+/** 详情媒体槽位 - 本地预览，保存时才上传 */
 function DetailSlot({
-  label, url, type, onUpload, onRemove, uploading, onError,
+  label, url, type, onFileSelect, onRemove, uploading,
 }: {
   label: string; url: string; type: string;
-  onUpload: (file: File) => void; onRemove: () => void;
-  uploading: boolean; onError: (msg: string) => void;
+  onFileSelect: (file: File) => void; onRemove: () => void;
+  uploading: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.type.startsWith("video/") && file.size > 50 * 1024 * 1024) {
-      onError("视频不能超过 50MB");
+      alert("视频不能超过 50MB");
       return;
     }
-    onUpload(file);
+    onFileSelect(file);
     if (inputRef.current) inputRef.current.value = "";
   };
   return (
@@ -131,9 +131,15 @@ export default function EditModal() {
   const [media1Type, setMediaType1] = useState("image");
   const [media2Type, setMediaType2] = useState("image");
   const [media3Type, setMediaType3] = useState("image");
+  // 存储待上传的本地文件（延迟上传）
+  const [pendingFile1, setPendingFile1] = useState<File | null>(null);
+  const [pendingFile2, setPendingFile2] = useState<File | null>(null);
+  const [pendingFile3, setPendingFile3] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pendingAvatar, setPendingAvatar] = useState<File | null>(null);
+  const [pendingDetail, setPendingDetail] = useState<File | null>(null);
 
   useEffect(() => {
     if (editingMember) {
@@ -155,6 +161,9 @@ export default function EditModal() {
       setMedia1(""); setMedia2(""); setMedia3("");
       setMediaType1("image"); setMediaType2("image"); setMediaType3("image");
     }
+    // 重置待上传文件
+    setPendingAvatar(null); setPendingDetail(null);
+    setPendingFile1(null); setPendingFile2(null); setPendingFile3(null);
   }, [editingMember, addingMember]);
 
   // 根据当前用户和编辑目标计算可选职位（必须在 early return 之前）
@@ -196,42 +205,37 @@ export default function EditModal() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // 用 base64 预览，同时存储文件待上传
     setAvatarPreview(await fileToBase64(file));
+    setPendingAvatar(file);
   };
 
   const handleDetailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // 用 base64 预览，同时存储文件待上传
     setDetailPreview(await fileToBase64(file));
+    setPendingDetail(file);
   };
 
-  // 上传到 Storage 并设置到指定槽位
-  const handleMediaUpload = async (index: number, file: File) => {
+  // 本地预览，不立即上传
+  const handleMediaSelect = async (index: number, file: File) => {
     const isVideo = file.type.startsWith("video/");
-    const bucket = isVideo ? "member-videos" : "member-photos";
-    const folder = isVideo ? "videos" : "photos";
     const setUrl = [setMedia1, setMedia2, setMedia3][index];
     const setType = [setMediaType1, setMediaType2, setMediaType3][index];
+    const setPending = [setPendingFile1, setPendingFile2, setPendingFile3][index];
 
-    setUploading(true);
-    setUploadError(null);
-    try {
-      const url = await uploadToStorage(file, bucket, folder);
-      if (url) {
-        setUrl(url);
-        setType(isVideo ? "video" : "image");
-      } else {
-        setUploadError("上传失败，请检查 Storage bucket 是否已创建");
-      }
-    } catch (err) {
-      setUploadError("上传出错: " + (err instanceof Error ? err.message : String(err)));
-    }
-    setUploading(false);
+    // 使用 base64 进行本地预览（比 URL.createObjectURL 更持久）
+    const previewUrl = await fileToBase64(file);
+    setUrl(previewUrl);
+    setType(isVideo ? "video" : "image");
+    setPending(file); // 存储文件，保存时再上传
   };
 
   const handleMediaRemove = (index: number) => {
     [setMedia1, setMedia2, setMedia3][index]("");
     [setMediaType1, setMediaType2, setMediaType3][index]("image");
+    [setPendingFile1, setPendingFile2, setPendingFile3][index](null);
   };
 
   const handleSave = async () => {
@@ -257,28 +261,69 @@ export default function EditModal() {
     }
     setUploadError(null);
     setSaving(true);
+    setUploading(true); // 显示上传进度
 
     try {
+      // 上传展示图片
+      let finalAvatarUrl = avatarPreview;
+      if (pendingAvatar) {
+        const url = await uploadToStorage(pendingAvatar, "member-photos", "avatars");
+        if (url) finalAvatarUrl = url;
+      }
+
+      // 上传详情图片
+      let finalDetailUrl = detailPreview;
+      if (pendingDetail) {
+        const url = await uploadToStorage(pendingDetail, "member-photos", "details");
+        if (url) finalDetailUrl = url;
+      }
+
+      // 上传详情媒体
+      const uploadMedia = async (pendingFile: File | null, currentUrl: string, index: number): Promise<{url: string, type: string}> => {
+        if (!pendingFile) {
+          const isVideo = currentUrl.includes("video") || [media1Type, media2Type, media3Type][index] === "video";
+          return { url: currentUrl, type: isVideo ? "video" : "image" };
+        }
+        const isVideo = pendingFile.type.startsWith("video/");
+        const bucket = isVideo ? "member-videos" : "member-photos";
+        const folder = isVideo ? "videos" : "photos";
+        const url = await uploadToStorage(pendingFile, bucket, folder);
+        return { url: url || currentUrl, type: isVideo ? "video" : "image" };
+      };
+
+      const [result1, result2, result3] = await Promise.all([
+        uploadMedia(pendingFile1, media1, 0),
+        uploadMedia(pendingFile2, media2, 1),
+        uploadMedia(pendingFile3, media3, 2),
+      ]);
+
       if (isAdd) {
         await addMember({
           name: name || "新成员", role, title: "",
-          avatarUrl: avatarPreview, detailUrl: detailPreview,
+          avatarUrl: finalAvatarUrl, detailUrl: finalDetailUrl,
           joinDate: new Date().toISOString().split("T")[0],
           signature,
-          detailMedia1: media1, detailMedia2: media2, detailMedia3: media3,
-          detailMedia1Type: media1Type, detailMedia2Type: media2Type, detailMedia3Type: media3Type,
+          detailMedia1: result1.url, detailMedia2: result2.url, detailMedia3: result3.url,
+          detailMedia1Type: result1.type, detailMedia2Type: result2.type, detailMedia3Type: result3.type,
           userId: "", gameId, password: "123456",
         });
       } else if (editingMember) {
-        await updateMember(editingMember.id, {
-          name, role, gameId, avatarUrl: avatarPreview, detailUrl: detailPreview, signature,
-          detailMedia1: media1, detailMedia2: media2, detailMedia3: media3,
-          detailMedia1Type: media1Type, detailMedia2Type: media2Type, detailMedia3Type: media3Type,
+        const success = await updateMember(editingMember.id, {
+          name, role, gameId, avatarUrl: finalAvatarUrl, detailUrl: finalDetailUrl, signature,
+          detailMedia1: result1.url, detailMedia2: result2.url, detailMedia3: result3.url,
+          detailMedia1Type: result1.type, detailMedia2Type: result2.type, detailMedia3Type: result3.type,
           password: editingMember.password || "123456",
         });
-        setEditingMember(null);
+        if (success) {
+          setEditingMember(null);
+        } else {
+          setUploadError("保存到数据库失败，请重试");
+          setSaving(false);
+          return;
+        }
       }
     } finally {
+      setUploading(false);
       setSaving(false);
     }
   };
@@ -356,11 +401,11 @@ export default function EditModal() {
                 </label>
                 <div className="flex flex-col gap-3">
                   <DetailSlot label="第一个详情图片或视频" url={media1} type={media1Type} uploading={uploading}
-                    onUpload={(f) => handleMediaUpload(0, f)} onRemove={() => handleMediaRemove(0)} onError={setUploadError} />
+                    onFileSelect={(f) => handleMediaSelect(0, f)} onRemove={() => handleMediaRemove(0)} />
                   <DetailSlot label="第二个详情图片或视频" url={media2} type={media2Type} uploading={uploading}
-                    onUpload={(f) => handleMediaUpload(1, f)} onRemove={() => handleMediaRemove(1)} onError={setUploadError} />
+                    onFileSelect={(f) => handleMediaSelect(1, f)} onRemove={() => handleMediaRemove(1)} />
                   <DetailSlot label="第三个详情图片或视频" url={media3} type={media3Type} uploading={uploading}
-                    onUpload={(f) => handleMediaUpload(2, f)} onRemove={() => handleMediaRemove(2)} onError={setUploadError} />
+                    onFileSelect={(f) => handleMediaSelect(2, f)} onRemove={() => handleMediaRemove(2)} />
                 </div>
               </div>
 

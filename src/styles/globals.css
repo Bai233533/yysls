@@ -40,9 +40,9 @@ html, body, #root {
 /* ===== Ink Wash Gradient Overlay ===== */
 .ink-wash-overlay {
   background:
-    radial-gradient(ellipse at 20% 80%, rgba(42,34,24,0.6) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(42,34,24,0.4) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 50%, rgba(12,10,8,0.3) 0%, transparent 70%);
+    radial-gradient(ellipse at 20% 80%, rgba(42,34,24,0.25) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(42,34,24,0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(12,10,8,0.1) 0%, transparent 70%);
 }
 
 /* ===== Ink Brush Underline ===== */
@@ -101,7 +101,11 @@ html, body, #root {
 .animate-marquee { animation: marquee 40s linear infinite; }
 .animate-marquee:hover { animation-play-state: paused; }
 
-/* JS-driven marquee: hover 暂停 */
+/* JS-driven marquee: hover 暂停, GPU 加速 */
+.marquee-track {
+  will-change: transform;
+  transform: translateZ(0);
+}
 .marquee-track:hover { animation-play-state: paused !important; }
 @keyframes marquee-pixel {
   0%   { transform: translateX(0); }
@@ -120,6 +124,12 @@ html, body, #root {
 @keyframes toast-sparkle {
   0%, 100% { opacity: 0.2; transform: scale(1); }
   50%      { opacity: 0.8; transform: scale(1.5); }
+}
+
+/* 通用淡入上浮动画 */
+@keyframes fadeInUp {
+  0%   { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes modalIn {

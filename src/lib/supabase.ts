@@ -188,16 +188,18 @@ export async function deletePhoto(id: number): Promise<boolean> {
 
 /* ================================================================
  *  背景预设 (bg_preset) 相关接口
+ *  字段：id, name, img, created_at, updated_at
  * ================================================================ */
 
 export interface SupabaseBgPreset {
   id: number;
   name: string;
-  url: string;
+  img: string;
   created_at?: string;
+  updated_at?: string;
 }
 
-// Fetch all presets, ordered by created_at
+// 获取所有预设
 export async function fetchBgPresets(): Promise<SupabaseBgPreset[]> {
   const { data, error } = await supabase
     .from("bg_preset")
@@ -210,11 +212,11 @@ export async function fetchBgPresets(): Promise<SupabaseBgPreset[]> {
   return data || [];
 }
 
-// Create a preset
-export async function createBgPreset(name: string, url: string): Promise<number | null> {
+// 添加预设
+export async function createBgPreset(name: string, img: string): Promise<number | null> {
   const { data, error } = await supabase
     .from("bg_preset")
-    .insert([{ name, url }])
+    .insert([{ name, img }])
     .select("id")
     .single();
   if (error) {
@@ -224,7 +226,7 @@ export async function createBgPreset(name: string, url: string): Promise<number 
   return data?.id || null;
 }
 
-// Delete a preset by id
+// 删除预设
 export async function deleteBgPreset(id: number): Promise<boolean> {
   const { error } = await supabase
     .from("bg_preset")
@@ -232,6 +234,54 @@ export async function deleteBgPreset(id: number): Promise<boolean> {
     .eq("id", id);
   if (error) {
     console.error("[Supabase] deleteBgPreset error:", error);
+    return false;
+  }
+  return true;
+}
+
+/* ================================================================
+ *  站点配置 (site_config) 相关接口
+ *  用于存储全局配置，如主页背景图片
+ * ================================================================ */
+
+// 获取配置项
+export async function getConfig(key: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("site_config")
+    .select("value")
+    .eq("key", key)
+    .single();
+  if (error) {
+    // 如果是"未找到"的错误，返回 null（不是真正的错误）
+    if (error.code === "PGRST116") {
+      return null;
+    }
+    console.error("[Supabase] getConfig error:", error);
+    return null;
+  }
+  return data?.value || null;
+}
+
+// 设置配置项（如果不存在则创建）
+export async function setConfig(key: string, value: string): Promise<boolean> {
+  // 先尝试更新
+  const { error: updateError } = await supabase
+    .from("site_config")
+    .update({ value, updated_at: new Date().toISOString() })
+    .eq("key", key);
+
+  // 如果更新成功（影响了行），返回 true
+  if (!updateError) {
+    return true;
+  }
+
+  // 如果是"未找到"的错误，尝试插入
+  const { error: insertError } = await supabase
+    .from("site_config")
+    .insert([{ key, value }]);
+
+  if (insertError) {
+    console.error("[Supabase] setConfig error:", insertError);
     return false;
   }
   return true;

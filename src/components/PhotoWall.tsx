@@ -86,7 +86,6 @@ function buildGrid(): Cell[] {
 
 export default function PhotoWall() {
   const wallPhotos = useStore((s) => s.wallPhotos);
-  const loadWallPhotos = useStore((s) => s.loadWallPhotos);
   const { showPhotoManager, canManagePhoto, isLoggedIn } = usePermission();
 
   const sphereRef = useRef<HTMLDivElement>(null);
@@ -120,11 +119,6 @@ export default function PhotoWall() {
 
   const grid = useRef(buildGrid()).current;
   const yOff = ((ROWS - 1) * ROW_GAP) / 2;
-
-  // 加载照片
-  useEffect(() => {
-    loadWallPhotos();
-  }, []); // eslint-disable-line
 
   // 构建 DOM（批量构建 + 图片渐入）
   useEffect(() => {

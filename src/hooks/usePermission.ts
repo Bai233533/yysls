@@ -51,5 +51,7 @@ export function usePermission() {
     showAddMember: level <= 3,
     /** 显示卡片编辑/删除按钮 (V1, V2) */
     showCardActions: level <= 2,
+    /** 可以修改主页背景 (V1, V2, V3) */
+    canChangeBackground: level <= 3,
   };
 }

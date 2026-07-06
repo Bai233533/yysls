@@ -10,6 +10,7 @@ export default function MemberDetailModal() {
   const cardRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoLoading, setVideoLoading] = useState(false);
 
   // 照片/视频轮播
   const [mediaIndex, setMediaIndex] = useState(0);
@@ -58,10 +59,18 @@ export default function MemberDetailModal() {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setCardEntered(true));
       });
+
+      // 预加载下一个视频（如果有）
+      if (mediaList.length > 1 && mediaList[1].type === "video") {
+        const preloadVideo = document.createElement("video");
+        preloadVideo.src = mediaList[1].url;
+        preloadVideo.preload = "auto";
+        preloadVideo.muted = true;
+      }
     }
   }, [member?.id]);
 
-  // 视频播放 5 秒后循环
+  // 视频播放 5 秒后循环 + 预加载下一个视频
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -73,8 +82,18 @@ export default function MemberDetailModal() {
     };
     v.addEventListener("timeupdate", onTimeUpdate);
     v.play().catch(() => {});
+
+    // 预加载下一个媒体（如果是视频）
+    const nextIndex = (mediaIndex + 1) % mediaList.length;
+    if (nextIndex !== mediaIndex && mediaList[nextIndex]?.type === "video") {
+      const preloadVideo = document.createElement("video");
+      preloadVideo.src = mediaList[nextIndex].url;
+      preloadVideo.preload = "auto";
+      preloadVideo.muted = true;
+    }
+
     return () => v.removeEventListener("timeupdate", onTimeUpdate);
-  }, [mediaIndex, currentMedia]);
+  }, [mediaIndex, currentMedia, mediaList]);
 
   const close = () => {
     setClosing(true);
@@ -192,15 +211,27 @@ export default function MemberDetailModal() {
       >
         {/* Background Media (photo or video) */}
         {currentMedia?.type === "video" ? (
-          <video
-            ref={videoRef}
-            src={currentMedia.url}
-            className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-            muted
-            loop
-            playsInline
-            draggable={false}
-          />
+          <>
+            <video
+              ref={videoRef}
+              src={currentMedia.url}
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+              muted
+              loop
+              playsInline
+              preload="auto"
+              draggable={false}
+              onWaiting={() => setVideoLoading(true)}
+              onPlaying={() => setVideoLoading(false)}
+              onCanPlay={() => setVideoLoading(false)}
+            />
+            {/* 视频加载状态 */}
+            {videoLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-[15]">
+                <div className="w-8 h-8 border-2 border-gold-400/30 border-t-gold-400 rounded-full animate-spin" />
+              </div>
+            )}
+          </>
         ) : (
           <img
             src={currentMedia?.url || member.detailUrl}

@@ -19,15 +19,113 @@ export default function WelcomePage() {
         </div>
       </div>
 
+      {/* Spotlight Effect - 柔和聚光灯 */}
+      <div className="fixed inset-0 z-[1] pointer-events-none overflow-hidden">
+        {/* 主光束 */}
+        <div className="spotlight-beam-1" />
+        {/* 次光束 */}
+        <div className="spotlight-beam-2" />
+        {/* 第三光束 - 更淡的补充 */}
+        <div className="spotlight-beam-3" />
+        {/* 环境光晕 */}
+        <div className="spotlight-ambient" />
+      </div>
+
+      <style>{`
+        @keyframes spotlightSway1 {
+          0%, 100% { transform: translateX(-30vw) rotate(-5deg) scaleX(0.9); }
+          50% { transform: translateX(30vw) rotate(5deg) scaleX(1.1); }
+        }
+        @keyframes spotlightSway2 {
+          0%, 100% { transform: translateX(20vw) rotate(4deg) scaleX(1.1); }
+          50% { transform: translateX(-20vw) rotate(-4deg) scaleX(0.9); }
+        }
+        @keyframes spotlightSway3 {
+          0%, 100% { transform: translateX(-15vw) rotate(-3deg); }
+          33% { transform: translateX(10vw) rotate(2deg); }
+          66% { transform: translateX(25vw) rotate(4deg); }
+        }
+        .spotlight-beam-1 {
+          position: absolute;
+          top: -100px;
+          left: 50%;
+          width: 500px;
+          height: 90vh;
+          background: radial-gradient(
+            ellipse 40% 70% at 50% 0%,
+            rgba(255,240,190,0.45) 0%,
+            rgba(233,193,118,0.2) 25%,
+            rgba(233,193,118,0.08) 50%,
+            rgba(233,193,118,0.02) 75%,
+            transparent 100%
+          );
+          animation: spotlightSway1 18s ease-in-out infinite;
+          filter: blur(25px);
+          transform-origin: top center;
+        }
+        .spotlight-beam-2 {
+          position: absolute;
+          top: -80px;
+          left: 50%;
+          width: 450px;
+          height: 85vh;
+          background: radial-gradient(
+            ellipse 35% 65% at 50% 0%,
+            rgba(255,250,220,0.35) 0%,
+            rgba(255,245,200,0.15) 30%,
+            rgba(255,240,180,0.05) 60%,
+            transparent 100%
+          );
+          animation: spotlightSway2 24s ease-in-out infinite;
+          filter: blur(30px);
+          transform-origin: top center;
+          opacity: 0.8;
+        }
+        .spotlight-beam-3 {
+          position: absolute;
+          top: -60px;
+          left: 50%;
+          width: 300px;
+          height: 70vh;
+          background: radial-gradient(
+            ellipse 30% 50% at 50% 0%,
+            rgba(255,245,200,0.25) 0%,
+            rgba(255,240,180,0.1) 40%,
+            transparent 80%
+          );
+          animation: spotlightSway3 28s ease-in-out infinite;
+          filter: blur(35px);
+          transform-origin: top center;
+          opacity: 0.6;
+        }
+        .spotlight-ambient {
+          position: absolute;
+          top: -50px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 100vw;
+          height: 400px;
+          background: radial-gradient(
+            ellipse 60% 80% at 50% 0%,
+            rgba(255,240,180,0.2) 0%,
+            rgba(233,193,118,0.08) 50%,
+            transparent 80%
+          );
+          filter: blur(40px);
+        }
+      `}</style>
+
       {/* Main Content */}
       <main className="relative z-10 flex flex-col items-center justify-center h-full px-16 md:px-64 text-center">
         {/* Logo Branding */}
         <div className="space-y-6 mb-12 animate-fade-in-up">
           <div className="flex flex-col items-center">
             {/* Title Logo */}
-            <h1 className="font-calligraphy text-[72px] md:text-[96px] text-on-surface leading-none drop-shadow-[0_0_30px_rgba(0,0,0,1)]">
-              燕云十六声
-            </h1>
+            <img
+              src="https://www.yysls.cn/pc/fab/20250723194326/img/logo_a9b36efe.png?image_process=format,png"
+              alt="燕云十六声"
+              className="w-[280px] md:w-[360px] h-auto drop-shadow-[0_0_30px_rgba(0,0,0,1)]"
+            />
             <p className="font-headline-md text-secondary mt-4 tracking-[0.4em] uppercase text-body-md md:text-headline-md">
               Where Winds Meet
             </p>

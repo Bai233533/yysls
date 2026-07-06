@@ -1,21 +1,24 @@
 import { Link } from "react-router-dom";
-import { Bell, User, Palette, Volume2, LogIn, LogOut, Settings } from "lucide-react";
+import { Bell, User, Palette, Volume2, VolumeX, LogIn, LogOut, Settings } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { usePermission } from "../hooks/usePermission";
+import { useStore } from "../store/useStore";
 
 const navLinks = [
   { target: "hero", label: "首页" },
   { target: "members", label: "百业成员" },
   { target: "photowall", label: "照片墙" },
-  { target: "photowall", label: "百业资料" },
-  { target: "photowall", label: "加入我们" },
+  { target: "guildnotice", label: "进百业须知" },
+  { target: "joinus", label: "加入我们" },
 ];
 
 const HIGHLIGHT_MAP: Record<string, string> = {
   hero: "hero",
   members: "members",
   photowall: "photowall",
+  guildnotice: "guildnotice",
+  joinus: "joinus",
 };
 
 const LEVEL_LABEL: Record<number, string> = { 1: "V1·社长", 2: "V2·副社长", 3: "V3·指挥", 4: "V4·社员", 5: "V5·观众" };
@@ -34,9 +37,11 @@ export default function Navbar({ onOpenBackground, onOpenLogin }: Props) {
 
   const { member, level, signOut, loading } = useAuth();
   const { showAddMember, showPhotoManager } = usePermission();
+  const bgMuted = useStore((s) => s.bgMuted);
+  const toggleBgMute = useStore((s) => s.toggleBgMute);
 
   useEffect(() => {
-    const sections = ["hero", "members", "photowall"];
+    const sections = ["hero", "members", "photowall", "guildnotice", "joinus"];
 
     const handleScroll = () => {
       if (clickLockRef.current) return;
@@ -79,9 +84,9 @@ export default function Navbar({ onOpenBackground, onOpenLogin }: Props) {
   return (
     <header className="fixed top-0 w-full z-50 border-b border-gold-400/15"
       style={{
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        background: "rgba(12,10,8,0.75)",
+        backdropFilter: "blur(20px) saturate(180%)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        background: "rgba(12,10,8,0.4)",
       }}
     >
       <div className="flex justify-between items-center px-8 md:px-16 py-4">
@@ -113,8 +118,10 @@ export default function Navbar({ onOpenBackground, onOpenLogin }: Props) {
               <Palette size={18} strokeWidth={1.5} />
             </button>
           )}
-          <button className="p-2 hover:bg-gold-400/10 rounded-full transition-all text-gold-200/50 hover:text-gold-200">
-            <Volume2 size={18} strokeWidth={1.5} />
+          <button onClick={toggleBgMute}
+            className="p-2 hover:bg-gold-400/10 rounded-full transition-all text-gold-200/50 hover:text-gold-200"
+            title={bgMuted ? "取消静音" : "静音"}>
+            {bgMuted ? <VolumeX size={18} strokeWidth={1.5} /> : <Volume2 size={18} strokeWidth={1.5} />}
           </button>
           <button className="p-2 hover:bg-gold-400/10 rounded-full transition-all text-gold-200/50 hover:text-gold-200">
             <Bell size={18} strokeWidth={1.5} />

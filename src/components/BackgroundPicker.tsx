@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { X, Upload, RotateCcw, Image as ImageIcon, Plus, Trash2 } from "lucide-react";
 import { useStore } from "../store/useStore";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { usePermission } from "../hooks/usePermission";
 import LoadingOverlay from "./LoadingOverlay";
 
 interface BackgroundPickerProps {
@@ -15,6 +16,7 @@ const OUTPUT_H = Math.round(OUTPUT_W / CROP_RATIO); // 1080
 export default function BackgroundPicker({ onClose }: BackgroundPickerProps) {
   useBodyScrollLock(true);
   const { heroBackground, setHeroBackground, resetHeroBackground, bgPresets, addBgPreset, removeBgPreset, loadBgPresets } = useStore();
+  const { canChangeBackground } = usePermission();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState(heroBackground);
 
@@ -34,7 +36,7 @@ export default function BackgroundPicker({ onClose }: BackgroundPickerProps) {
 
   /* 从 Supabase 加载预设 */
   const [presetLoading, setPresetLoading] = useState(false);
-  useEffect(() => { setPresetLoading(true); loadBgPresets().finally(() => setPresetLoading(false)); }, []);
+  useEffect(() => { loadBgPresets(); }, []);
 
   /* 阻止背景滚动 */
   useEffect(() => {
@@ -184,6 +186,78 @@ export default function BackgroundPicker({ onClose }: BackgroundPickerProps) {
     setPresetName("");
   };
 
+  // 无权限提示
+  if (!canChangeBackground) {
+    return (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center">
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0"
+          style={{ background: "rgba(12,10,8,0.7)", backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
+          onClick={onClose}
+        />
+
+        {/* Panel */}
+        <div
+          className="relative z-[210] w-[400px] max-w-[92vw] rounded-xl overflow-hidden flex flex-col"
+          style={{
+            background: "linear-gradient(180deg, #1a1814 0%, #0d0c0a 100%)",
+            border: "1px solid rgba(193,155,77,0.25)",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(193,155,77,0.1)",
+          }}
+        >
+          {/* Header */}
+          <div
+            className="flex items-center justify-between px-6 py-4 border-b flex-none"
+            style={{ borderColor: "rgba(193,155,77,0.15)" }}
+          >
+            <div className="flex items-center gap-3">
+              <ImageIcon size={18} style={{ color: "#e9c176" }} />
+              <h3 className="font-song text-lg text-gold-100 tracking-wider">背景设置</h3>
+            </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded hover:bg-gold-400/10 text-gold-200/50 hover:text-gold-200 transition-all"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col items-center justify-center">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
+                <X size={32} className="text-red-400" />
+              </div>
+              <h4 className="font-song text-lg text-gold-100 tracking-wider mb-2">无权修改背景</h4>
+              <p className="font-song text-sm text-gold-200/50 tracking-wider">
+                仅社长、副社长、指挥可修改主页背景
+              </p>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div
+            className="px-6 py-4 border-t flex items-center justify-end flex-none"
+            style={{ borderColor: "rgba(193,155,77,0.15)" }}
+          >
+            <button
+              onClick={onClose}
+              className="px-5 py-2 rounded-lg text-sm font-song tracking-wider transition-all hover:opacity-90"
+              style={{
+                background: "linear-gradient(135deg, #c19b4d 0%, #e9c176 100%)",
+                color: "#1a1814",
+                boxShadow: "0 2px 8px rgba(193,155,77,0.3)",
+              }}
+            >
+              知道了
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
       <LoadingOverlay show={presetLoading} />
@@ -254,16 +328,16 @@ export default function BackgroundPicker({ onClose }: BackgroundPickerProps) {
               {bgPresets.map((p) => (
                 <div key={p.id} className="relative group">
                   <button
-                    onClick={() => handlePresetClick(p.url)}
+                    onClick={() => handlePresetClick(p.img)}
                     className="w-full aspect-video rounded-lg overflow-hidden transition-all hover:scale-[1.03] block"
                     style={{
-                      border: heroBackground === p.url
+                      border: heroBackground === p.img
                         ? "2px solid rgba(233,193,118,0.8)"
                         : "1px solid rgba(193,155,77,0.15)",
-                      boxShadow: heroBackground === p.url ? "0 0 12px rgba(193,155,77,0.3)" : "none",
+                      boxShadow: heroBackground === p.img ? "0 0 12px rgba(193,155,77,0.3)" : "none",
                     }}
                   >
-                    <img src={p.url} alt={p.name} className="w-full h-full object-cover"
+                    <img src={p.img} alt={p.name} className="w-full h-full object-cover"
                       style={{ filter: "sepia(0.3) saturate(0.7) brightness(0.5)" }} />
                     <div className="absolute inset-x-0 bottom-0 px-2 py-1 bg-ink-900/70 backdrop-blur-sm">
                       <span className="text-[10px] text-gold-200 font-song tracking-wider">{p.name}</span>

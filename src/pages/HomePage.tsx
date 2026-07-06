@@ -1,5 +1,5 @@
 import { PenTool } from "lucide-react";
-import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Navbar from "../components/Navbar";
 import HeroLogo from "../components/HeroLogo";
 import PhotoWall from "../components/PhotoWall";
@@ -14,17 +14,22 @@ import WelcomeToast from "../components/WelcomeToast";
 import LoginModal from "../components/LoginModal";
 import RegisterModal from "../components/RegisterModal";
 import PasswordRecoveryModal from "../components/PasswordRecoveryModal";
+import GuildInfoSection from "../components/GuildInfoSection";
+import JoinUsSection from "../components/JoinUsSection";
+import GameFooter from "../components/GameFooter";
+import BGMusic from "../components/BGMusic";
+import MusicControl from "../components/MusicControl";
 import { useStore } from "../store/useStore";
 import { usePermission } from "../hooks/usePermission";
 import { useAuth } from "../contexts/AuthContext";
 
-const CARD_W = 96; // w-24 = 96px
-const MIN_GAP = 8; // gap-2 = 8px
+const CARD_W = 64; // w-16 = 64px
+const MIN_GAP = 30; // 照片间距
 const TARGET_WIDTH = 4; // 需要填满至少 4 倍屏幕宽度以保证无缝滚动
 
 export default function HomePage() {
-  const { members, currentPage, membersPerPage, setCurrentPage, setSelectedMember, setAddingMember, syncFromCloud, heroBackground } = useStore();
-  const { showAddMember } = usePermission();
+  const { members, currentPage, membersPerPage, setCurrentPage, setSelectedMember, setAddingMember, syncFromCloud, heroBackground, syncStatus } = useStore();
+  const { showAddMember, canChangeBackground } = usePermission();
   const { member: currentUser } = useAuth();
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [viewportW, setViewportW] = useState(typeof window !== "undefined" ? window.innerWidth : 1920);
@@ -54,7 +59,7 @@ export default function HomePage() {
   );
 
   const marqueeRef = useRef<HTMLDivElement>(null);
-  const [marqueeStyle, setMarqueeStyle] = useState<React.CSSProperties>({});
+  const marqueeAnimInit = useRef(false);
 
   // 动态计算重复次数和间距，确保滚动内容宽度 >= 屏幕 * TARGET_WIDTH
   const { repeatedMembers, gap } = useMemo(() => {
@@ -79,43 +84,57 @@ export default function HomePage() {
     return { repeatedMembers: repeated, gap: finalGap };
   }, [members, viewportW]);
 
-  // 渲染后测量一组成员的实际宽度，用 JS 动画精确滚动一组的距离
-  const setupMarquee = useCallback(() => {
+  // 一次性设置动画（只在首次渲染时启动，避免反复重启导致抽搐）
+  useEffect(() => {
     const el = marqueeRef.current;
-    if (!el || members.length === 0) return;
-    // 一组成员的宽度 = N 个卡片 + (N-1) 个间距
-    const oneSetW = members.length * CARD_W + (Math.max(0, members.length - 1)) * gap;
+    if (!el || members.length === 0 || marqueeAnimInit.current) return;
+    marqueeAnimInit.current = true;
+    // 偏移量 = N × (卡片宽 + 间距)，包含尾部间距实现无缝循环
+    const oneSetW = members.length * (CARD_W + gap);
     const speed = 80; // px/s
     const duration = oneSetW / speed;
-    // 通过 CSS 变量控制滚动距离，keyframes 中使用 calc(-1 * var(--marquee-offset))
     el.style.setProperty("--marquee-offset", `${oneSetW}px`);
-    setMarqueeStyle({
-      animation: `marquee-pixel ${duration}s linear infinite`,
-    });
-  }, [members.length, gap]);
+    el.style.animation = `marquee-pixel ${duration}s linear infinite`;
+  }, [members.length, gap]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 成员数量变化时，仅更新 CSS 偏移量变量，不重启动画
   useEffect(() => {
-    // 等 DOM 渲染完成后设置动画
-    const raf = requestAnimationFrame(() => setupMarquee());
-    return () => cancelAnimationFrame(raf);
-  }, [setupMarquee]);
+    const el = marqueeRef.current;
+    if (!el || !marqueeAnimInit.current || members.length === 0) return;
+    const oneSetW = members.length * (CARD_W + gap);
+    el.style.setProperty("--marquee-offset", `${oneSetW}px`);
+  }, [members.length, gap]);
 
   return (
     <div className="relative min-h-screen w-full bg-ink-900">
-      <Navbar onOpenBackground={() => setShowBgPicker(true)} onOpenLogin={() => setAuthModal("login")} />
+      <Navbar onOpenBackground={canChangeBackground ? () => setShowBgPicker(true) : undefined} onOpenLogin={() => setAuthModal("login")} />
+
+      {/* 加载状态提示 - 顶部固定 */}
+      {syncStatus === "syncing" && (
+        <div className="fixed top-16 left-0 right-0 z-40 flex justify-center">
+          <div className="px-4 py-2 rounded-b-lg bg-ink-900/90 border border-t-0 border-gold-400/20 backdrop-blur-sm">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-gold-400/30 border-t-gold-400 rounded-full animate-spin" />
+              <span className="text-xs font-song text-gold-200/70">正在同步数据...</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ===== SECTION: Hero ===== */}
       <section id="hero" className="relative min-h-screen w-full flex flex-col justify-center items-center overflow-hidden">
-        {/* Ink wash mountain background */}
+        {/* 背景图 - 在最底层，覆盖整个区域 */}
         <div className="absolute inset-0 z-0">
-          <div className="w-full h-full bg-cover bg-center transition-all duration-1000 scale-105"
+          <div className="w-full h-full bg-cover bg-center transition-all duration-1000 scale-110"
             style={{
               backgroundImage: `url('${heroBackground}')`,
-              filter: "sepia(0.3) saturate(0.7) brightness(0.4) contrast(1.1)",
+              filter: "saturate(1.1) brightness(0.72) contrast(1.05)",
             }}
           />
+          {/* 水墨效果叠加 - 减淡，保留照片质感 */}
           <div className="absolute inset-0 ink-wash-overlay" />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/40 to-ink-900/70" />
+          {/* 底部渐变遮罩 - 柔和过渡，露出更多背景 */}
+          <div className="absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/30 to-transparent" />
         </div>
 
         {/* Central Logo */}
@@ -135,20 +154,24 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Auto-scrolling Member Gallery - Ink Scroll Style */}
-        <div className="absolute bottom-0 left-0 w-full z-30 pb-4">
+        {/* Auto-scrolling Member Gallery - 半透明滚动条 */}
+        <div className="absolute bottom-0 left-0 w-full z-30 pb-6">
           <div className="overflow-hidden">
             <div
               ref={marqueeRef}
               className="flex marquee-track w-max"
-              style={{ gap: `${gap}px`, ...marqueeStyle }}
+              style={{ gap: `${gap}px` }}
             >
               {repeatedMembers.map((member, i) => (
                 <div
                   key={`${member.id}-${i}`}
                   onClick={() => setSelectedMember(member)}
-                  className="flex-none w-24 aspect-[3/4] cursor-pointer group relative overflow-hidden rounded"
-                  style={{ border: "1px solid rgba(193,155,77,0.2)" }}
+                  className="flex-none w-16 aspect-[3/4] cursor-pointer group relative overflow-hidden rounded"
+                  style={{ 
+                    border: "1px solid rgba(193,155,77,0.3)",
+                    opacity: 0.85,
+                    filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.4))",
+                  }}
                 >
                   <img
                     src={member.avatarUrl}
@@ -157,8 +180,8 @@ export default function HomePage() {
                     loading="lazy"
                     decoding="async"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-ink-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                    <span className="text-[9px] text-gold-200 font-song tracking-tighter">{member.name}</span>
+                  <div className="absolute inset-0 bg-gradient-to-t from-ink-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-1">
+                    <span className="text-[8px] text-gold-200 font-song tracking-tighter">{member.name}</span>
                   </div>
                 </div>
               ))}
@@ -209,26 +232,22 @@ export default function HomePage() {
       {/* ===== SECTION: Photo Wall (3D 球形照片墙) ===== */}
       <PhotoWall />
 
-      {/* ===== SECTION: Footer ===== */}
-      <footer className="w-full bg-ink-900 border-t border-gold-400/10 flex flex-col md:flex-row justify-between items-center px-8 md:px-16 py-10">
-        <div className="flex flex-col gap-3 mb-8 md:mb-0">
-          <h3 className="font-calligraphy text-gold-200 text-xl tracking-widest">百业</h3>
-          <p className="font-song text-gold-200/30 text-xs">© 1152 Baiye Guild. All Rights Reserved.</p>
-        </div>
-        <div className="flex flex-wrap justify-center gap-8">
-          {["江湖规矩", "联络总舵", "隐私卷轴", "义气条款"].map((label) => (
-            <a key={label} href="#" className="font-song text-xs text-gold-200/30 hover:text-gold-200/70 transition-colors">
-              {label}
-            </a>
-          ))}
-        </div>
-      </footer>
+      {/* ===== SECTION: 百业资料 ===== */}
+      <GuildInfoSection />
+
+      {/* ===== SECTION: 加入我们 ===== */}
+      <JoinUsSection />
+
+      {/* ===== SECTION: 游戏风格结尾 ===== */}
+      <GameFooter />
 
       <MemberDetailModal />
       <EditModal />
       <DeleteConfirmDialog />
       <GitHubSync />
       <WelcomeToast />
+      <BGMusic />
+      <MusicControl />
       {showBgPicker && <BackgroundPicker onClose={() => setShowBgPicker(false)} />}
 
       {/* Auth Modals */}
