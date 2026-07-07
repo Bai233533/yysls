@@ -6,118 +6,113 @@ import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { usePermission } from "../hooks/usePermission";
 
 /* ================================================================
- *  3D 球形照片墙 (Sphere Photo Wall)
- *  - 桶形圆柱面：中间行大、顶底行小，形成球形视觉
- *  - 缓慢自动旋转 + 拖拽控制 + 惯性
- *  - 悬停暂停 + 弹窗暂停
- *  - 点击放大查看
+ *  桶形球体照片墙 (Barrel Globe)
+ *  - 照片排列在桶形球面上：中间行大、顶底行小
+ *  - 水平圆柱面 + 垂直桶形 = 球体视觉
+ *  - 拖拽旋转 + 惯性 + 自动旋转
  * ================================================================ */
 
-// ========== 球形参数 ==========
-const CYL_R = 480;           // 中间行半径
-const ROWS = 5;              // 行数（奇数，中间行为最大半径）
-const BASE_SIZE = 90;        // 基准尺寸
-const ROW_GAP = 110;         // 行间距
-const BARREL = 0.65;         // 桶形系数
-const AUTO_SPEED = 0.04;     // 自动旋转速度
-const FRICTION = 0.95;       // 惯性衰减
-const DRAG_SENS = 0.25;      // 拖拽灵敏度
-const BATCH_SIZE = 16;       // 每帧批量DOM数量
+// ========== 参数 ==========
+const CYL_R = 520;            // 中间行半径
+const MAX_ROWS = 5;           // 最大行数
+const BARREL = 0.72;          // 桶形系数（越小顶底越窄）
+const AUTO_SPEED = 0.03;      // 自动旋转速度（度/帧）
+const FRICTION = 0.94;        // 惯性衰减
+const DRAG_SENS = 0.25;       // 拖拽灵敏度
+const BATCH_SIZE = 20;        // 每帧批量DOM数量
 
-// ========== 种子随机：基于索引的确定性随机 ==========
-function seededRand(seed: number): number {
-  let x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
-  return x - Math.floor(x); // 0~1
+// 自适应配置
+function getAdaptiveConfig(count: number) {
+  if (count <= 3)   return { rows: 1, baseSize: 180, rowGap: 0 };
+  if (count <= 6)   return { rows: 1, baseSize: 160, rowGap: 0 };
+  if (count <= 10)  return { rows: 2, baseSize: 140, rowGap: 150 };
+  if (count <= 18)  return { rows: 3, baseSize: 120, rowGap: 135 };
+  if (count <= 28)  return { rows: 4, baseSize: 105, rowGap: 125 };
+  return { rows: MAX_ROWS, baseSize: 90, rowGap: 115 };
 }
 
-// 比例 → 宽高计算（尊重用户裁剪比例）
+// ========== 种子随机 ==========
+function seededRand(seed: number): number {
+  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+// 比例
 const RATIO_MAP: Record<string, number> = {
   "4:3": 4 / 3, "3:4": 3 / 4, "1:1": 1, "16:9": 16 / 9, "3:2": 3 / 2,
 };
 
-// 根据比例和索引计算确定性宽高
-function photoSize(ratio: string | undefined, idx: number): { w: number; h: number } {
-  const r = RATIO_MAP[ratio || "4:3"] || 4 / 3;
-  // 基于索引的确定性缩放：0.8 ~ 1.25（更大变化范围）
-  const scale = 0.8 + seededRand(idx * 3 + 1) * 0.45;
+// 获取照片的数值比例
+function getRatioValue(ratio: string | undefined, idx: number): number {
+  if (ratio === "free") return 0.6 + seededRand(idx * 7 + 3) * 1.0;
+  return RATIO_MAP[ratio || "4:3"] || 4 / 3;
+}
+
+// 严格按用户裁剪比例计算尺寸（不改变比例，只微调整体大小）
+function photoSize(ratio: string | undefined, idx: number, baseSize: number): { w: number; h: number } {
+  const r = getRatioValue(ratio, idx);
+  const scale = 0.92 + seededRand(idx * 3 + 1) * 0.16;
   if (r >= 1) {
-    const w = BASE_SIZE * scale;
+    const w = baseSize * scale;
     return { w, h: w / r };
   } else {
-    const h = BASE_SIZE * scale;
+    const h = baseSize * scale;
     return { w: h * r, h };
   }
 }
 
-// "free" 比例照片：确定性随机宽高比
-function freeSize(idx: number): { w: number; h: number } {
-  const ar = 0.55 + seededRand(idx * 7 + 3) * 1.1; // 0.55 ~ 1.65
-  const scale = 0.8 + seededRand(idx * 5 + 7) * 0.45;
-  const base = BASE_SIZE * scale;
-  if (ar >= 1) {
-    return { w: base, h: base / ar };
-  } else {
-    return { w: base * ar, h: base };
-  }
+// 按比例排序：横版 → 方形 → 竖版，同类型内按比例值排列
+function sortPhotosByRatio(photos: typeof import("../store/useStore").initialState.wallPhotos) {
+  return [...photos].sort((a, b) => {
+    const ra = getRatioValue(a.ratio, 0);
+    const rb = getRatioValue(b.ratio, 0);
+    const scoreA = ra > 1.05 ? 0 : ra < 0.95 ? 2 : 1;
+    const scoreB = rb > 1.05 ? 0 : rb < 0.95 ? 2 : 1;
+    if (scoreA !== scoreB) return scoreA - scoreB;
+    return ra - rb;
+  });
 }
 
 // 桶形半径：中间行最大，顶底行缩小
-function rowRadius(row: number): number {
-  const mid = (ROWS - 1) / 2;
+function barrelRadius(row: number, rows: number): number {
+  if (rows <= 1) return CYL_R;
+  const mid = (rows - 1) / 2;
   const norm = Math.abs(row - mid) / mid;
   return CYL_R * (1 - (1 - BARREL) * norm * norm);
 }
 
-// ========== 网格（有机布局） ==========
+// ========== 网格 ==========
 interface Cell {
   theta: number;
   row: number;
-  jitterY: number;    // 垂直抖动（像素）
-  tiltDeg: number;    // 倾斜角度（度）
-  scaleOff: number;   // 额外缩放偏移
-}
-
-// 根据照片数量动态分配每行的列数（中间行多、顶底行少）
-function distributePerRow(total: number): number[] {
-  // 每行的权重：中间行权重最大
-  const mid = (ROWS - 1) / 2;
-  const weights = Array.from({ length: ROWS }, (_, r) => {
-    const norm = Math.abs(r - mid) / mid;
-    return 1 - (1 - BARREL) * norm * norm;
-  });
-  const totalWeight = weights.reduce((a, b) => a + b, 0);
-  // 按权重分配，至少每行1个
-  let perRow = weights.map(w => Math.max(1, Math.round((w / totalWeight) * total)));
-  // 调整总数
-  let diff = total - perRow.reduce((a, b) => a + b, 0);
-  let i = 0;
-  while (diff > 0) { perRow[i % ROWS]++; diff--; i++; }
-  while (diff < 0) {
-    // 从最多的行减
-    const maxIdx = perRow.indexOf(Math.max(...perRow));
-    if (perRow[maxIdx] > 1) { perRow[maxIdx]--; diff++; }
-    else break;
-  }
-  return perRow;
+  jitterY: number;
+  tiltDeg: number;
+  scaleOff: number;
 }
 
 function buildGrid(photoCount: number): Cell[] {
+  const { rows } = getAdaptiveConfig(photoCount);
   const cells: Cell[] = [];
-  const perRow = distributePerRow(photoCount);
+
+  // 根据照片数量决定弧度展开范围：少照片=小弧度（紧凑），多照片=大弧度（铺满）
+  const spreadFactor = Math.min(1, photoCount / 30); // 30张以上才铺满360°
+  const maxArc = Math.PI * 0.8 * spreadFactor + Math.PI * 0.4; // 最小弧度0.4π，最大0.8π
+
+  // 按行分配照片
+  const photosPerRow = Math.ceil(photoCount / rows);
   let idx = 0;
-  for (let r = 0; r < ROWS; r++) {
-    const cols = perRow[r];
-    for (let c = 0; c < cols; c++) {
-      // 基于全局索引的确定性抖动
-      const jy = (seededRand(idx * 13 + 2) - 0.5) * 40;
-      const tilt = (seededRand(idx * 17 + 5) - 0.5) * 12;
-      const sOff = (seededRand(idx * 19 + 9) - 0.5) * 0.3;
+  for (let r = 0; r < rows; r++) {
+    const count = Math.min(photosPerRow, photoCount - idx);
+    for (let c = 0; c < count; c++) {
+      if (idx >= photoCount) break;
+      // 在限定弧度内均匀分布，居中排列
+      const theta = count === 1 ? 0 : -maxArc + (2 * maxArc * c) / (count - 1);
       cells.push({
-        theta: (2 * Math.PI * c) / cols + (seededRand(idx * 23 + 11) - 0.5) * 0.12,
+        theta,
         row: r,
-        jitterY: jy,
-        tiltDeg: tilt,
-        scaleOff: sOff,
+        jitterY: (seededRand(idx * 13 + 2) - 0.5) * 20,
+        tiltDeg: (seededRand(idx * 17 + 5) - 0.5) * 8,
+        scaleOff: (seededRand(idx * 19 + 9) - 0.5) * 0.15,
       });
       idx++;
     }
@@ -131,7 +126,6 @@ export default function PhotoWall() {
 
   const sphereRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
-
   const rotY = useRef(0);
   const velY = useRef(0);
   const drag = useRef(false);
@@ -142,9 +136,8 @@ export default function PhotoWall() {
   const lbRef = useRef(false);
   const [showManager, setShowManager] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
-  const [sphereReady, setSphereReady] = useState(false); // 球体构建完成
+  const [wallReady, setWallReady] = useState(false);
 
-  // 下载照片
   const handleDownload = useCallback((url: string, title: string) => {
     const a = document.createElement("a");
     a.href = url;
@@ -158,32 +151,37 @@ export default function PhotoWall() {
 
   useBodyScrollLock(lb !== null);
 
-  const grid = useMemo(() => buildGrid(wallPhotos.length), [wallPhotos.length]);
-  const yOff = ((ROWS - 1) * ROW_GAP) / 2;
+  // 按比例排序后展示（横版→方形→竖版）
+  const sortedPhotos = useMemo(() => sortPhotosByRatio(wallPhotos), [wallPhotos]);
+  const grid = useMemo(() => buildGrid(sortedPhotos.length), [sortedPhotos.length]);
+  const config = useMemo(() => getAdaptiveConfig(sortedPhotos.length), [sortedPhotos.length]);
+  const yOff = ((config.rows - 1) * config.rowGap) / 2;
 
-  // 构建 DOM（批量构建 + 图片渐入）
+  // 构建 DOM
   useEffect(() => {
     const sphere = sphereRef.current;
     if (!sphere) return;
     sphere.innerHTML = "";
-    setSphereReady(false);
+    setWallReady(false);
 
-    // 构建所有元素的数据
+    const { rows, baseSize, rowGap } = config;
     const items: { el: HTMLDivElement; img: HTMLImageElement }[] = [];
+
     grid.forEach((cell, i) => {
-      const photo = wallPhotos[i % wallPhotos.length];
+      const photo = sortedPhotos[i % sortedPhotos.length];
       if (!photo) return;
       const { theta, row, jitterY, tiltDeg, scaleOff } = cell;
 
-      const r = rowRadius(row);
+      // 桶形半径：中间行大，顶底行小
+      const r = barrelRadius(row, rows);
       const x = r * Math.sin(theta);
-      const y = row * ROW_GAP - yOff + jitterY; // 垂直抖动
       const z = r * Math.cos(theta);
+      const y = row * rowGap - yOff + jitterY;
       const ry = (theta * 180) / Math.PI;
 
-      // 根据照片实际比例计算尺寸
-      const base = photo.ratio === "free" ? freeSize(i) : photoSize(photo.ratio, i);
-      const s = 1 + scaleOff; // 额外缩放
+      // 严格按用户裁剪比例计算尺寸
+      const base = photoSize(photo.ratio, i, baseSize);
+      const s = 1 + scaleOff;
       const w = base.w * s;
       const h = base.h * s;
 
@@ -192,9 +190,8 @@ export default function PhotoWall() {
       el.style.width = `${w}px`;
       el.style.height = `${h}px`;
       el.style.opacity = "0";
-      // 加入轻微倾斜，让布局更有机
       el.style.transform =
-        `translate3d(${x - w / 2}px,${y - h / 2}px,${z}px) rotateY(${ry}deg) rotateZ(${tiltDeg}deg)`;
+        `translate3d(${x - w / 2}px, ${y - h / 2}px, ${z}px) rotateY(${ry}deg) rotateZ(${tiltDeg}deg)`;
 
       const img = document.createElement("img");
       img.src = photo.src;
@@ -203,12 +200,10 @@ export default function PhotoWall() {
       img.decoding = "async";
       img.draggable = false;
 
-      // 图片加载完成后渐入显示
       img.onload = () => {
         el.style.transition = "opacity 0.4s ease";
         el.style.opacity = "1";
       };
-      // 加载失败也显示（用背景色兜底）
       img.onerror = () => {
         el.style.transition = "opacity 0.3s ease";
         el.style.opacity = "0.5";
@@ -228,7 +223,7 @@ export default function PhotoWall() {
       items.push({ el, img });
     });
 
-    // 批量构建：每帧插入 BATCH_SIZE 个元素，避免主线程阻塞
+    // 批量插入
     let idx = 0;
     const batchAppend = () => {
       const end = Math.min(idx + BATCH_SIZE, items.length);
@@ -241,16 +236,15 @@ export default function PhotoWall() {
       if (idx < items.length) {
         requestAnimationFrame(batchAppend);
       } else {
-        setSphereReady(true);
+        setWallReady(true);
       }
     };
     requestAnimationFrame(batchAppend);
 
     return () => {
-      // 清理 img.onload 防止内存泄漏
       items.forEach(({ img }) => { img.onload = null; img.onerror = null; });
     };
-  }, [grid, yOff, wallPhotos]);
+  }, [grid, config, yOff, sortedPhotos]);
 
   // 动画循环
   const animate = useCallback(() => {
@@ -274,7 +268,6 @@ export default function PhotoWall() {
     return () => cancelAnimationFrame(animRef.current);
   }, [animate]);
 
-  // 弹窗关闭时重启动画
   useEffect(() => {
     if (!lb) {
       cancelAnimationFrame(animRef.current);
@@ -337,7 +330,7 @@ export default function PhotoWall() {
           </p>
         </div>
 
-        {/* 操作按钮：管理层→管理照片墙，社员→上传照片 */}
+        {/* 操作按钮 */}
         {showPhotoManager && (
           <button
             onClick={() => setShowManager(true)}
@@ -367,7 +360,7 @@ export default function PhotoWall() {
           </button>
         )}
 
-        {/* 3D 球体 */}
+        {/* 桶形球体 */}
         <div
           className="pw-wrap"
           onMouseDown={md}
@@ -380,7 +373,7 @@ export default function PhotoWall() {
         </div>
 
         {/* 加载提示 */}
-        {!sphereReady && wallPhotos.length > 0 && (
+        {!wallReady && wallPhotos.length > 0 && (
           <div
             className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 font-song text-xs tracking-widest pointer-events-none"
             style={{ color: "rgba(233,193,118,0.45)" }}
@@ -412,10 +405,7 @@ export default function PhotoWall() {
         </div>
       )}
 
-      {/* 照片管理弹窗 */}
       {showManager && <PhotoManager onClose={() => setShowManager(false)} />}
-
-      {/* 照片上传弹窗（社员用） */}
       {showUpload && <PhotoUploadModal onClose={() => setShowUpload(false)} />}
     </>
   );
