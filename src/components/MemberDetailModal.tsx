@@ -290,10 +290,16 @@ export default function MemberDetailModal() {
             <div className="w-10 h-10 rounded-full overflow-hidden border border-gold-400/40 flex-none">
               <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover pointer-events-none" draggable={false} />
             </div>
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col min-w-0 flex-1">
               <span className="text-gold-100 text-sm font-song font-semibold truncate">@{member.name}</span>
               <span className="text-gold-200/50 text-xs font-song truncate">{member.signature || member.role}</span>
             </div>
+            {member.title && (
+              <span className="text-gold-100 text-xs font-song tracking-wider flex-none"
+                style={{ textShadow: "0 0 8px rgba(233,193,118,0.3)" }}>
+                {member.title}
+              </span>
+            )}
           </div>
         </div>
       </div>

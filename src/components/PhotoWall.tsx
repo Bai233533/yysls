@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import { useStore } from "../store/useStore";
 import PhotoManager from "./PhotoManager";
 import PhotoUploadModal from "./PhotoUploadModal";
@@ -16,26 +16,30 @@ import { usePermission } from "../hooks/usePermission";
 // ========== 球形参数 ==========
 const CYL_R = 480;           // 中间行半径
 const ROWS = 5;              // 行数（奇数，中间行为最大半径）
-const COLS = 16;             // 每行照片数（从22降至16，减少DOM数量）
-const BASE_SIZE = 95;        // 基准尺寸（稍大补偿减少的格子）
-const ROW_GAP = 100;         // 行间距
-const BARREL = 0.65;         // 桶形系数（越小顶底越窄）
-const AUTO_SPEED = 0.04;     // 自动旋转速度（度/帧）
+const BASE_SIZE = 90;        // 基准尺寸
+const ROW_GAP = 110;         // 行间距
+const BARREL = 0.65;         // 桶形系数
+const AUTO_SPEED = 0.04;     // 自动旋转速度
 const FRICTION = 0.95;       // 惯性衰减
 const DRAG_SENS = 0.25;      // 拖拽灵敏度
-const BATCH_SIZE = 16;       // 每帧批量构建的DOM数量
+const BATCH_SIZE = 16;       // 每帧批量DOM数量
 
-// 比例 → 宽高计算
+// ========== 种子随机：基于索引的确定性随机 ==========
+function seededRand(seed: number): number {
+  let x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x); // 0~1
+}
+
+// 比例 → 宽高计算（尊重用户裁剪比例）
 const RATIO_MAP: Record<string, number> = {
   "4:3": 4 / 3, "3:4": 3 / 4, "1:1": 1, "16:9": 16 / 9, "3:2": 3 / 2,
 };
 
-// 根据比例和基准尺寸计算宽高，并加随机缩放
-function photoSize(ratio?: string): { w: number; h: number } {
+// 根据比例和索引计算确定性宽高
+function photoSize(ratio: string | undefined, idx: number): { w: number; h: number } {
   const r = RATIO_MAP[ratio || "4:3"] || 4 / 3;
-  // 随机缩放 0.85 ~ 1.15
-  const seed = ((Math.random() * 10000) | 0) % 300;
-  const scale = 0.85 + seed / 1000;
+  // 基于索引的确定性缩放：0.8 ~ 1.25（更大变化范围）
+  const scale = 0.8 + seededRand(idx * 3 + 1) * 0.45;
   if (r >= 1) {
     const w = BASE_SIZE * scale;
     return { w, h: w / r };
@@ -45,11 +49,10 @@ function photoSize(ratio?: string): { w: number; h: number } {
   }
 }
 
-// "free" 比例照片：随机宽高比（0.6 ~ 1.6）
-function freeSize(): { w: number; h: number } {
-  const seed = ((Math.random() * 10000) | 0) % 100;
-  const ar = 0.6 + seed / 100; // 0.6 ~ 1.6
-  const scale = 0.85 + (((Math.random() * 10000) | 0) % 300) / 1000;
+// "free" 比例照片：确定性随机宽高比
+function freeSize(idx: number): { w: number; h: number } {
+  const ar = 0.55 + seededRand(idx * 7 + 3) * 1.1; // 0.55 ~ 1.65
+  const scale = 0.8 + seededRand(idx * 5 + 7) * 0.45;
   const base = BASE_SIZE * scale;
   if (ar >= 1) {
     return { w: base, h: base / ar };
@@ -65,20 +68,58 @@ function rowRadius(row: number): number {
   return CYL_R * (1 - (1 - BARREL) * norm * norm);
 }
 
-// ========== 网格 ==========
+// ========== 网格（有机布局） ==========
 interface Cell {
   theta: number;
   row: number;
+  jitterY: number;    // 垂直抖动（像素）
+  tiltDeg: number;    // 倾斜角度（度）
+  scaleOff: number;   // 额外缩放偏移
 }
 
-function buildGrid(): Cell[] {
+// 根据照片数量动态分配每行的列数（中间行多、顶底行少）
+function distributePerRow(total: number): number[] {
+  // 每行的权重：中间行权重最大
+  const mid = (ROWS - 1) / 2;
+  const weights = Array.from({ length: ROWS }, (_, r) => {
+    const norm = Math.abs(r - mid) / mid;
+    return 1 - (1 - BARREL) * norm * norm;
+  });
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  // 按权重分配，至少每行1个
+  let perRow = weights.map(w => Math.max(1, Math.round((w / totalWeight) * total)));
+  // 调整总数
+  let diff = total - perRow.reduce((a, b) => a + b, 0);
+  let i = 0;
+  while (diff > 0) { perRow[i % ROWS]++; diff--; i++; }
+  while (diff < 0) {
+    // 从最多的行减
+    const maxIdx = perRow.indexOf(Math.max(...perRow));
+    if (perRow[maxIdx] > 1) { perRow[maxIdx]--; diff++; }
+    else break;
+  }
+  return perRow;
+}
+
+function buildGrid(photoCount: number): Cell[] {
   const cells: Cell[] = [];
+  const perRow = distributePerRow(photoCount);
+  let idx = 0;
   for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
+    const cols = perRow[r];
+    for (let c = 0; c < cols; c++) {
+      // 基于全局索引的确定性抖动
+      const jy = (seededRand(idx * 13 + 2) - 0.5) * 40;
+      const tilt = (seededRand(idx * 17 + 5) - 0.5) * 12;
+      const sOff = (seededRand(idx * 19 + 9) - 0.5) * 0.3;
       cells.push({
-        theta: (2 * Math.PI * c) / COLS,
+        theta: (2 * Math.PI * c) / cols + (seededRand(idx * 23 + 11) - 0.5) * 0.12,
         row: r,
+        jitterY: jy,
+        tiltDeg: tilt,
+        scaleOff: sOff,
       });
+      idx++;
     }
   }
   return cells;
@@ -117,7 +158,7 @@ export default function PhotoWall() {
 
   useBodyScrollLock(lb !== null);
 
-  const grid = useRef(buildGrid()).current;
+  const grid = useMemo(() => buildGrid(wallPhotos.length), [wallPhotos.length]);
   const yOff = ((ROWS - 1) * ROW_GAP) / 2;
 
   // 构建 DOM（批量构建 + 图片渐入）
@@ -132,23 +173,28 @@ export default function PhotoWall() {
     grid.forEach((cell, i) => {
       const photo = wallPhotos[i % wallPhotos.length];
       if (!photo) return;
-      const { theta, row } = cell;
+      const { theta, row, jitterY, tiltDeg, scaleOff } = cell;
 
       const r = rowRadius(row);
       const x = r * Math.sin(theta);
-      const y = row * ROW_GAP - yOff;
+      const y = row * ROW_GAP - yOff + jitterY; // 垂直抖动
       const z = r * Math.cos(theta);
       const ry = (theta * 180) / Math.PI;
 
-      const { w, h } = photo.ratio === "free" ? freeSize() : photoSize(photo.ratio);
+      // 根据照片实际比例计算尺寸
+      const base = photo.ratio === "free" ? freeSize(i) : photoSize(photo.ratio, i);
+      const s = 1 + scaleOff; // 额外缩放
+      const w = base.w * s;
+      const h = base.h * s;
 
       const el = document.createElement("div");
       el.className = "pw-item";
       el.style.width = `${w}px`;
       el.style.height = `${h}px`;
-      el.style.opacity = "0";       // 初始隐藏，加载后渐入
+      el.style.opacity = "0";
+      // 加入轻微倾斜，让布局更有机
       el.style.transform =
-        `translate3d(${x - w / 2}px,${y - h / 2}px,${z}px) rotateY(${ry}deg)`;
+        `translate3d(${x - w / 2}px,${y - h / 2}px,${z}px) rotateY(${ry}deg) rotateZ(${tiltDeg}deg)`;
 
       const img = document.createElement("img");
       img.src = photo.src;

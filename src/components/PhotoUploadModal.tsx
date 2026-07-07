@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { createPhoto } from "../lib/supabase";
+import { createPhoto, uploadToStorage } from "../lib/supabase";
 import { useStore } from "../store/useStore";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import LoadingOverlay from "./LoadingOverlay";
@@ -27,6 +27,7 @@ export default function PhotoUploadModal({ onClose }: Props) {
 
   const [formName, setFormName] = useState("");
   const [formSrc, setFormSrc] = useState("");
+  const [formRatio, setFormRatio] = useState("free"); // 实际裁剪比例
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -47,6 +48,7 @@ export default function PhotoUploadModal({ onClose }: Props) {
     const url = URL.createObjectURL(file);
     setCropFile(url);
     setFormSrc("");
+    setFormRatio("free");
   };
 
   const handleCropImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -135,6 +137,18 @@ export default function PhotoUploadModal({ onClose }: Props) {
     if (!ctx) return;
     ctx.drawImage(cropImg, cropRect.x * scaleX, cropRect.y * scaleY, outW, outH, 0, 0, canvas.width, canvas.height);
     setFormSrc(canvas.toDataURL("image/jpeg", 0.92));
+
+    // 计算裁剪比例：匹配标准比例或标记为 free
+    const ratio = outW / outH;
+    const stdRatios: [string, number][] = [
+      ["1:1", 1], ["4:3", 4/3], ["3:4", 3/4], ["16:9", 16/9], ["3:2", 3/2], ["2:3", 2/3],
+    ];
+    let matched = "free";
+    for (const [name, std] of stdRatios) {
+      if (Math.abs(ratio - std) < 0.08) { matched = name; break; }
+    }
+    setFormRatio(matched);
+
     setCropFile(null);
     setCropImg(null);
   };
@@ -145,15 +159,30 @@ export default function PhotoUploadModal({ onClose }: Props) {
     setSaving(true);
     setError(null);
     try {
+      // 将 base64 转为 Blob 并上传到 Storage（比存 base64 快得多）
+      const res = await fetch(formSrc);
+      const blob = await res.blob();
+      const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
+      const url = await uploadToStorage(file, "member-photos", "wall-photos");
+
+      if (!url) {
+        setError("上传失败，请稍后再试");
+        setSaving(false);
+        return;
+      }
+
+      // 计算实际裁剪比例
+      const ratio = formRatio || "free";
+
       const id = await createPhoto({
         name: formName.trim(),
-        src: formSrc,
+        src: url,
         sort_order: 0,
         is_active: true,
-        ratio: "free",
+        ratio,
       });
       if (!id) {
-        setError("上传失败，请稍后再试");
+        setError("保存失败，请稍后再试");
         setSaving(false);
         return;
       }
@@ -295,7 +324,10 @@ export default function PhotoUploadModal({ onClose }: Props) {
               {/* 已裁剪预览 */}
               {formSrc && !cropFile && (
                 <div className="mb-4">
-                  <label className="block font-song text-gold-200/60 text-sm mb-1.5">预览</label>
+                  <label className="block font-song text-gold-200/60 text-sm mb-1.5">
+                    预览 {formRatio !== "free" && <span className="text-gold-400/70">· {formRatio}</span>}
+                    {formRatio === "free" && <span className="text-gold-200/30"> · 自由比例</span>}
+                  </label>
                   <div className="w-full h-48 rounded border border-gold-400/20 overflow-hidden bg-ink-900/40">
                     <img src={formSrc} className="w-full h-full object-contain" alt="预览" />
                   </div>

@@ -3,6 +3,7 @@ import {
   fetchAllPhotos,
   createPhoto,
   deletePhoto,
+  uploadToStorage,
   SupabasePhoto,
 } from "../lib/supabase";
 import { useStore } from "../store/useStore";
@@ -53,6 +54,7 @@ export default function PhotoManager({ onClose }: Props) {
   // 添加表单
   const [formName, setFormName] = useState("");
   const [formSrc, setFormSrc] = useState("");
+  const [formRatio, setFormRatio] = useState("free");
 
   // 裁剪
   const [cropFile, setCropFile] = useState<string | null>(null);
@@ -78,10 +80,10 @@ export default function PhotoManager({ onClose }: Props) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    // 取第一张进行裁剪，其余后续处理
     const url = URL.createObjectURL(files[0]);
     setCropFile(url);
     setFormSrc("");
+    setFormRatio("free");
   };
 
   const handleCropImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -196,6 +198,18 @@ export default function PhotoManager({ onClose }: Props) {
       canvas.height
     );
     setFormSrc(canvas.toDataURL("image/jpeg", 0.92));
+
+    // 计算裁剪比例
+    const ratio = outW / outH;
+    const stdRatios: [string, number][] = [
+      ["1:1", 1], ["4:3", 4/3], ["3:4", 3/4], ["16:9", 16/9], ["3:2", 3/2], ["2:3", 2/3],
+    ];
+    let matched = "free";
+    for (const [name, std] of stdRatios) {
+      if (Math.abs(ratio - std) < 0.08) { matched = name; break; }
+    }
+    setFormRatio(matched);
+
     setCropFile(null);
     setCropImg(null);
   };
@@ -206,15 +220,27 @@ export default function PhotoManager({ onClose }: Props) {
     setSaving(true);
     setSaveError(null);
     try {
+      // 上传到 Storage
+      const res = await fetch(formSrc);
+      const blob = await res.blob();
+      const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
+      const url = await uploadToStorage(file, "member-photos", "wall-photos");
+
+      if (!url) {
+        setSaveError("上传失败，请稍后再试");
+        setSaving(false);
+        return;
+      }
+
       const id = await createPhoto({
         name: formName.trim(),
-        src: formSrc,
+        src: url,
         sort_order: photos.length,
         is_active: true,
-        ratio: "free",
+        ratio: formRatio,
       });
       if (!id) {
-        setSaveError("添加失败，请在 Supabase 创建 photo 表");
+        setSaveError("保存失败，请稍后再试");
         setSaving(false);
         return;
       }
@@ -223,6 +249,7 @@ export default function PhotoManager({ onClose }: Props) {
       setMode("list");
       setFormName("");
       setFormSrc("");
+      setFormRatio("free");
     } catch (e) {
       setSaveError("操作失败: " + (e instanceof Error ? e.message : String(e)));
     }

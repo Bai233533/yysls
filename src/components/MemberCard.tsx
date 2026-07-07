@@ -106,6 +106,16 @@ export default function MemberCard({ member, showActions = true }: MemberCardPro
           {member.role}
         </span>
 
+        {/* 称号标签：右上角 */}
+        {member.title && (
+          <span
+            className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded text-[10px] font-song tracking-wider z-10 backdrop-blur-sm"
+            style={{ background: "rgba(180,140,50,0.85)", color: "#fff8e0", border: "1px solid rgba(230,200,100,0.5)" }}
+          >
+            {member.title}
+          </span>
+        )}
+
         {/* 底部渐变遮罩 */}
         <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/70 to-transparent pointer-events-none" />
 

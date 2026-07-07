@@ -119,6 +119,7 @@ export default function EditModal() {
   const [role, setRole] = useState<string>("社员");
   const [gameId, setGameId] = useState("");
   const [signature, setSignature] = useState("");
+  const [title, setTitle] = useState("");
   const [avatarPreview, setAvatarPreview] = useState("");
   const [detailPreview, setDetailPreview] = useState("");
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -147,6 +148,7 @@ export default function EditModal() {
       setRole(editingMember.role);
       setGameId(editingMember.gameId || "");
       setSignature(editingMember.signature || "");
+      setTitle(editingMember.title || "");
       setAvatarPreview(editingMember.avatarUrl);
       setDetailPreview(editingMember.detailUrl);
       setMedia1(editingMember.detailMedia1 || "");
@@ -156,7 +158,7 @@ export default function EditModal() {
       setMediaType2(editingMember.detailMedia2Type || "image");
       setMediaType3(editingMember.detailMedia3Type || "image");
     } else if (addingMember) {
-      setName(""); setRole("社员"); setGameId(""); setSignature("");
+      setName(""); setRole("社员"); setGameId(""); setSignature(""); setTitle("");
       setAvatarPreview(""); setDetailPreview("");
       setMedia1(""); setMedia2(""); setMedia3("");
       setMediaType1("image"); setMediaType2("image"); setMediaType3("image");
@@ -299,7 +301,7 @@ export default function EditModal() {
 
       if (isAdd) {
         await addMember({
-          name: name || "新成员", role, title: "",
+          name: name || "新成员", role, title,
           avatarUrl: finalAvatarUrl, detailUrl: finalDetailUrl,
           joinDate: new Date().toISOString().split("T")[0],
           signature,
@@ -309,7 +311,7 @@ export default function EditModal() {
         });
       } else if (editingMember) {
         const success = await updateMember(editingMember.id, {
-          name, role, gameId, avatarUrl: finalAvatarUrl, detailUrl: finalDetailUrl, signature,
+          name, role, gameId, avatarUrl: finalAvatarUrl, detailUrl: finalDetailUrl, signature, title,
           detailMedia1: result1.url, detailMedia2: result2.url, detailMedia3: result3.url,
           detailMedia1Type: result1.type, detailMedia2Type: result2.type, detailMedia3Type: result3.type,
           password: editingMember.password || "123456",
@@ -384,6 +386,12 @@ export default function EditModal() {
                 <input type="text" value={gameId} onChange={(e) => setGameId(e.target.value)}
                   className="w-full px-3 py-2 rounded border border-gold-400/20 text-sm text-ink-800 font-song bg-rice-50 focus:outline-none focus:border-gold-400 transition-all"
                   placeholder="输入游戏内ID（必填，用于找回密码）" />
+              </div>
+              <div>
+                <label className="block text-xs font-song text-ink-600 mb-1.5 tracking-wide">称号</label>
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 rounded border border-gold-400/20 text-sm text-ink-800 font-song bg-rice-50 focus:outline-none focus:border-gold-400 transition-all"
+                  placeholder="输入称号（可选，社长/副社长设置）" />
               </div>
               <div>
                 <label className="block text-xs font-song text-ink-600 mb-1.5 tracking-wide">个性签名</label>
