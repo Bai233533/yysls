@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { uploadToStorage } from "../lib/supabase";
 import LoadingOverlay from "./LoadingOverlay";
+import ImageCropModal from "./ImageCropModal";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -141,6 +142,9 @@ export default function EditModal() {
   const [saving, setSaving] = useState(false);
   const [pendingAvatar, setPendingAvatar] = useState<File | null>(null);
   const [pendingDetail, setPendingDetail] = useState<File | null>(null);
+  // 裁剪弹窗状态
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropTarget, setCropTarget] = useState<"avatar" | "detail">("avatar");
 
   useEffect(() => {
     if (editingMember) {
@@ -204,20 +208,40 @@ export default function EditModal() {
 
   const close = () => { setEditingMember(null); setAddingMember(false); };
 
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // 用 base64 预览，同时存储文件待上传
-    setAvatarPreview(await fileToBase64(file));
-    setPendingAvatar(file);
+    setCropFile(file);
+    setCropTarget("avatar");
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
   };
 
-  const handleDetailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDetailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // 用 base64 预览，同时存储文件待上传
-    setDetailPreview(await fileToBase64(file));
-    setPendingDetail(file);
+    setCropFile(file);
+    setCropTarget("detail");
+    if (detailInputRef.current) detailInputRef.current.value = "";
+  };
+
+  // 裁剪确认回调：设置预览 + 创建待上传File
+  const handleCropConfirm = (croppedBase64: string) => {
+    // base64 转 File
+    const arr = croppedBase64.split(",");
+    const mime = arr[0].match(/:(.*?);/)?.[1] || "image/jpeg";
+    const bstr = atob(arr[1]);
+    const u8 = new Uint8Array(bstr.length);
+    for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+    const file = new File([u8], `cropped_${Date.now()}.jpg`, { type: mime });
+
+    if (cropTarget === "avatar") {
+      setAvatarPreview(croppedBase64);
+      setPendingAvatar(file);
+    } else {
+      setDetailPreview(croppedBase64);
+      setPendingDetail(file);
+    }
+    setCropFile(null);
   };
 
   // 本地预览，不立即上传
@@ -331,6 +355,7 @@ export default function EditModal() {
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-[110] flex items-center justify-center">
       <LoadingOverlay show={saving} message={isAdd ? "正在录入新成员..." : "正在更新资料..."} />
       <div className="absolute inset-0 bg-ink-900/60 backdrop-blur-sm" onClick={close} />
@@ -441,5 +466,15 @@ export default function EditModal() {
         </div>
       </div>
     </div>
+
+    {/* 图片裁剪弹窗 */}
+    {cropFile && (
+      <ImageCropModal
+        file={cropFile}
+        onConfirm={handleCropConfirm}
+        onCancel={() => setCropFile(null)}
+      />
+    )}
+    </>
   );
 }

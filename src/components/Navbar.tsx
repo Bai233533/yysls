@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Bell, User, Palette, Volume2, VolumeX, LogIn, LogOut, Settings } from "lucide-react";
+import NoticePanel from "./NoticePanel";
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { usePermission } from "../hooks/usePermission";
@@ -32,6 +33,7 @@ interface Props {
 export default function Navbar({ onOpenBackground, onOpenLogin }: Props) {
   const [activeSection, setActiveSection] = useState("hero");
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotice, setShowNotice] = useState(false);
   const clickLockRef = useRef(false);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -172,9 +174,15 @@ export default function Navbar({ onOpenBackground, onOpenLogin }: Props) {
               />
             </div>
           </div>
-          <button className="p-2 hover:bg-gold-400/10 rounded-full transition-all text-gold-200/50 hover:text-gold-200">
-            <Bell size={18} strokeWidth={1.5} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => { setShowNotice(!showNotice); setShowUserMenu(false); }}
+              className="p-2 hover:bg-gold-400/10 rounded-full transition-all text-gold-200/50 hover:text-gold-200"
+            >
+              <Bell size={18} strokeWidth={1.5} />
+            </button>
+            {showNotice && <NoticePanel onClose={() => setShowNotice(false)} />}
+          </div>
 
           {/* 用户按钮 */}
           {loading ? (

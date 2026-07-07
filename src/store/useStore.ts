@@ -7,6 +7,9 @@ const STORAGE_KEY = "baiye_members";
 const BG_KEY = "baiye_hero_bg";
 const DEFAULT_BG = "https://picsum.photos/seed/inkmountain/1920/1080";
 
+// 模块级同步守卫：整个应用生命周期内只允许执行一次 syncFromCloud
+let _hasSynced = false;
+
 interface BgPreset { id: number; name: string; img: string }
 
 // 照片墙 fallback 数据（Supabase 不可用时使用）
@@ -246,9 +249,9 @@ export const useStore = create<AppState>((set, get) => ({
 
   /* ---- 成员同步 ---- */
   syncFromCloud: async () => {
-    // 防止并发执行（React StrictMode 会触发两次）
-    const state = get();
-    if (state._syncInProgress) return;
+    // 模块级守卫：整个应用只允许执行一次，彻底防止 StrictMode 双重执行
+    if (_hasSynced) return;
+    _hasSynced = true;
     set({ syncStatus: "syncing", _syncInProgress: true });
     try {
       // 并行加载成员、照片、背景和预设数据，提升加载速度
@@ -266,24 +269,8 @@ export const useStore = create<AppState>((set, get) => ({
           const members = cloudMembers.map(fromDB);
           set({ members });
           saveLocal(members);
-        } else {
-          // Cloud is empty, push initial data（按 name 去重，防止重复插入）
-          const local = loadLocal();
-          const existingNames = new Set<string>();
-          for (const m of local) {
-            if (!existingNames.has(m.name)) {
-              existingNames.add(m.name);
-              await db.createMember(toDB(m));
-            }
-          }
-          // 推送后重新拉取，确保本地状态与云端一致
-          const cloudAfter = await db.fetchAll();
-          if (cloudAfter.length > 0) {
-            const members = cloudAfter.map(fromDB);
-            set({ members });
-            saveLocal(members);
-          }
         }
+        // 云端为空时不自动推送本地数据，避免网络波动导致重复插入
       }
 
       // 处理照片数据
