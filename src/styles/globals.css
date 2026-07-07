@@ -10,6 +10,12 @@
   box-sizing: border-box;
 }
 
+/* 性能优化：视口外区域延迟渲染 */
+#members, #photowall, #guildnotice, #joinus {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
+}
+
 html, body, #root {
   width: 100%;
   min-height: 100%;
@@ -208,10 +214,10 @@ html, body, #root {
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  /* 深空基底：纯黑 + 中心微弱暗灰蓝径向渐变 */
   background:
     radial-gradient(ellipse 60% 50% at 50% 50%, rgba(15,18,30,0.5), transparent),
     #000;
+  contain: strict;
 }
 
 /* ── 极细星点（1px，约 70 颗，慢速呼吸 5-8s） ── */
@@ -424,6 +430,7 @@ html, body, #root {
   position: relative;
   z-index: 10;
   cursor: grab;
+  contain: layout style;
 }
 .pw-wrap:active { cursor: grabbing; }
 
@@ -432,6 +439,7 @@ html, body, #root {
   height: 100%;
   position: relative;
   transform-style: preserve-3d;
+  will-change: transform;
 }
 
 /* 球面照片 */
@@ -446,7 +454,8 @@ html, body, #root {
   backface-visibility: hidden;
   border: 1.5px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 2px 8px rgba(0,0,0,0.6);
-  transition: border-color 0.3s, box-shadow 0.3s, filter 0.3s;
+  will-change: transform;
+  transition: border-color 0.3s, box-shadow 0.3s;
 }
 .pw-item img {
   width: 100%;
@@ -454,15 +463,16 @@ html, body, #root {
   object-fit: cover;
   display: block;
   pointer-events: none;
-  filter: brightness(0.85) saturate(0.9);
+  filter: brightness(0.88);
   transition: filter 0.3s;
+  contain: paint;
 }
 .pw-item:hover {
   border-color: rgba(233,193,118,0.6);
-  box-shadow: 0 0 16px rgba(193,155,77,0.35), 0 0 30px rgba(0,0,0,0.5);
+  box-shadow: 0 0 12px rgba(193,155,77,0.3);
   z-index: 100;
 }
-.pw-item:hover img { filter: brightness(1) saturate(1); }
+.pw-item:hover img { filter: brightness(1); }
 
 /* 照片标题 */
 .pw-lbl {
@@ -515,7 +525,7 @@ html, body, #root {
   100% { background-position: -100% -100%; }
 }
 
-/* 卡片底部金线装饰：中间亮两端淡，缓慢呼吸 */
+/* 卡片底部金线装饰：hover时才呼吸动画 */
 .mc-gold-line {
   z-index: 2;
   background: linear-gradient(
@@ -526,6 +536,10 @@ html, body, #root {
     rgba(193, 155, 77, 0.4) 70%,
     transparent 100%
   );
+  opacity: 0.5;
+  width: 33%;
+}
+.mc-card:hover .mc-gold-line {
   animation: mc-line-pulse 3s ease-in-out infinite;
 }
 @keyframes mc-line-pulse {
@@ -534,11 +548,13 @@ html, body, #root {
 }
 
 /* 卡片 hover 时边框金色辉光 */
+.mc-card {
+  contain: layout style;
+}
 .mc-card:hover {
   box-shadow:
     0 4px 20px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(230, 180, 90, 0.25),
-    0 0 20px rgba(193, 155, 77, 0.15) !important;
+    0 0 0 1px rgba(230, 180, 90, 0.25) !important;
   border-color: rgba(230, 180, 90, 0.3) !important;
 }
 

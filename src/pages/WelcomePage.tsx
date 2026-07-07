@@ -1,10 +1,40 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 import Particles from "../components/Particles";
 import GodRays from "../components/GodRays";
 import RotatingRing from "../components/RotatingRing";
+import { useStore } from "../store/useStore";
 
 export default function WelcomePage() {
   const navigate = useNavigate();
+  const syncFromCloud = useStore((s) => s.syncFromCloud);
+  const heroBackground = useStore((s) => s.heroBackground);
+  const members = useStore((s) => s.members);
+
+  // 欢迎页阶段预加载首页数据（成员、照片墙、背景图等）
+  useEffect(() => {
+    syncFromCloud();
+  }, []); // eslint-disable-line
+
+  // 预加载首页背景图
+  useEffect(() => {
+    if (heroBackground) {
+      const img = new Image();
+      img.src = heroBackground;
+    }
+  }, [heroBackground]);
+
+  // 预加载成员头像（取前12张，覆盖首屏）
+  useEffect(() => {
+    if (members.length > 0) {
+      members.slice(0, 12).forEach((m) => {
+        if (m.avatarUrl) {
+          const img = new Image();
+          img.src = m.avatarUrl;
+        }
+      });
+    }
+  }, [members]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-surface-lowest">

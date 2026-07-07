@@ -18,7 +18,6 @@ import GuildInfoSection from "../components/GuildInfoSection";
 import JoinUsSection from "../components/JoinUsSection";
 import GameFooter from "../components/GameFooter";
 import BGMusic from "../components/BGMusic";
-import MusicControl from "../components/MusicControl";
 import { useStore } from "../store/useStore";
 import { usePermission } from "../hooks/usePermission";
 import { useAuth } from "../contexts/AuthContext";
@@ -247,7 +246,6 @@ export default function HomePage() {
       <GitHubSync />
       <WelcomeToast />
       <BGMusic />
-      <MusicControl />
       {showBgPicker && <BackgroundPicker onClose={() => setShowBgPicker(false)} />}
 
       {/* Auth Modals */}

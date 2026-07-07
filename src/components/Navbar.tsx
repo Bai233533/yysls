@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { usePermission } from "../hooks/usePermission";
 import { useStore } from "../store/useStore";
+import { audioEl } from "./BGMusic";
 
 const navLinks = [
   { target: "hero", label: "首页" },
@@ -35,10 +36,31 @@ export default function Navbar({ onOpenBackground, onOpenLogin }: Props) {
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
+  const [volumeHover, setVolumeHover] = useState(false);
+  const volTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const { member, level, signOut, loading } = useAuth();
   const { showAddMember, showPhotoManager } = usePermission();
   const bgMuted = useStore((s) => s.bgMuted);
+  const bgVolume = useStore((s) => s.bgVolume);
   const toggleBgMute = useStore((s) => s.toggleBgMute);
+  const setBgVolume = useStore((s) => s.setBgVolume);
+  const setBgPlaying = useStore((s) => s.setBgPlaying);
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = Number(e.target.value);
+    setBgVolume(v);
+    if (audioEl) {
+      audioEl.volume = v;
+      audioEl.muted = v === 0;
+      if (v > 0 && audioEl.paused) {
+        audioEl.play().then(() => setBgPlaying(true)).catch(() => {});
+      }
+    }
+  };
+
+  const volEnter = () => { if (volTimerRef.current) clearTimeout(volTimerRef.current); setVolumeHover(true); };
+  const volLeave = () => { volTimerRef.current = setTimeout(() => setVolumeHover(false), 200); };
 
   useEffect(() => {
     const sections = ["hero", "members", "photowall", "guildnotice", "joinus"];
@@ -118,11 +140,38 @@ export default function Navbar({ onOpenBackground, onOpenLogin }: Props) {
               <Palette size={18} strokeWidth={1.5} />
             </button>
           )}
-          <button onClick={toggleBgMute}
-            className="p-2 hover:bg-gold-400/10 rounded-full transition-all text-gold-200/50 hover:text-gold-200"
-            title={bgMuted ? "取消静音" : "静音"}>
-            {bgMuted ? <VolumeX size={18} strokeWidth={1.5} /> : <Volume2 size={18} strokeWidth={1.5} />}
-          </button>
+          {/* 音量控制：悬停弹出滑块 */}
+          <div className="relative flex items-center" onMouseEnter={volEnter} onMouseLeave={volLeave}>
+            <button onClick={toggleBgMute}
+              className="p-2 hover:bg-gold-400/10 rounded-full transition-all text-gold-200/50 hover:text-gold-200"
+              title={bgMuted ? "取消静音" : "静音"}>
+              {bgMuted ? <VolumeX size={18} strokeWidth={1.5} /> : <Volume2 size={18} strokeWidth={1.5} />}
+            </button>
+            {/* 音量滑块 - 从按钮左侧弹出 */}
+            <div
+              className={`absolute right-full top-1/2 -translate-y-1/2 mr-2 flex items-center gap-2 px-3 py-1.5 rounded-lg border border-gold-400/15 backdrop-blur-md
+                transition-all duration-200 origin-right
+                ${volumeHover ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"}`}
+              style={{ background: "rgba(24,22,18,0.9)" }}
+              onMouseEnter={volEnter}
+              onMouseLeave={volLeave}
+            >
+              <Volume2 size={12} className="text-gold-200/40 flex-shrink-0" />
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={bgMuted ? 0 : bgVolume}
+                onChange={handleVolumeChange}
+                className="w-20 h-1 appearance-none rounded-full bg-gold-400/20 cursor-pointer
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3
+                  [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full
+                  [&::-webkit-slider-thumb]:bg-gold-200/70 [&::-webkit-slider-thumb]:hover:bg-gold-200
+                  [&::-webkit-slider-thumb]:transition-colors [&::-webkit-slider-thumb]:shadow-[0_0_6px_rgba(212,175,55,0.3)]"
+              />
+            </div>
+          </div>
           <button className="p-2 hover:bg-gold-400/10 rounded-full transition-all text-gold-200/50 hover:text-gold-200">
             <Bell size={18} strokeWidth={1.5} />
           </button>

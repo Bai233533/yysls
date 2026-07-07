@@ -27,7 +27,7 @@ const steps = [
   {
     step: "肆",
     title: "正式入会",
-    desc: "加入公会频道，开启你的江湖之旅",
+    desc: "加入我们情意结，开启你的江湖之旅",
   },
 ];
 
@@ -185,7 +185,7 @@ export default function JoinUsSection() {
                       社长微信
                     </p>
                     <p className="font-song text-lg text-gold-100 font-medium">
-                      Baiye_Guild
+                      hl710706780
                     </p>
                   </div>
                 </div>
@@ -203,7 +203,7 @@ export default function JoinUsSection() {
                       副社长微信
                     </p>
                     <p className="font-song text-lg text-gold-100 font-medium">
-                      Vice_Leader
+                      qq730568
                     </p>
                   </div>
                 </div>

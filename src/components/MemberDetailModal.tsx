@@ -191,7 +191,7 @@ export default function MemberDetailModal() {
       {/* Backdrop */}
       <div
         className="absolute inset-0"
-        style={{ background: "rgba(12,10,8,0.75)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
+        style={{ background: "rgba(12,10,8,0.8)" }}
         onClick={close}
       />
 
@@ -202,7 +202,8 @@ export default function MemberDetailModal() {
         style={{
           boxShadow: "0 0 0 1px rgba(193,155,77,0.35), 0 0 60px rgba(193,155,77,0.25), 0 25px 80px rgba(0,0,0,0.6)",
           transformStyle: "preserve-3d",
-          transition: "transform 0.8s cubic-bezier(0.15, 0.85, 0.25, 1), opacity 0.15s ease",
+          willChange: "transform",
+          transition: "transform 0.6s cubic-bezier(0.15, 0.85, 0.25, 1), opacity 0.15s ease",
           transform: cardEntered
             ? "perspective(1000px) rotateY(0deg) scale(1)"
             : "perspective(1000px) rotateY(360deg) scale(0.5)",
@@ -241,23 +242,14 @@ export default function MemberDetailModal() {
           />
         )}
 
-        {/* 流光效果（持续循环） */}
+        {/* 流光效果（简化版，减少GPU负载） */}
         <div
           className="absolute inset-0 pointer-events-none z-[5]"
           style={{
-            background: `linear-gradient(
-              135deg,
-              transparent 0%,
-              transparent 30%,
-              rgba(230, 180, 90, 0.1) 42%,
-              rgba(255, 230, 150, 0.28) 50%,
-              rgba(230, 180, 90, 0.1) 58%,
-              transparent 70%,
-              transparent 100%
-            )`,
-            backgroundSize: "250% 250%",
-            animation: "mc-shine-detail 3.5s linear infinite",
-            mixBlendMode: "overlay",
+            background: "linear-gradient(135deg, transparent 30%, rgba(255,230,150,0.15) 50%, transparent 70%)",
+            backgroundSize: "200% 200%",
+            animation: "mc-shine-detail 4s ease-in-out infinite",
+            willChange: "background-position",
           }}
         />
 
@@ -293,7 +285,7 @@ export default function MemberDetailModal() {
           style={{ transform: "translateZ(40px)" }}
         >
           <div className="px-4 py-3 rounded flex items-center gap-3"
-            style={{ background: "rgba(12,10,8,0.6)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(193,155,77,0.25)" }}
+            style={{ background: "rgba(12,10,8,0.85)", border: "1px solid rgba(193,155,77,0.25)" }}
           >
             <div className="w-10 h-10 rounded-full overflow-hidden border border-gold-400/40 flex-none">
               <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover pointer-events-none" draggable={false} />
