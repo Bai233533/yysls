@@ -62,7 +62,7 @@ function photoSize(ratio: string | undefined, idx: number, baseSize: number): { 
 }
 
 // 按比例排序：横版 → 方形 → 竖版，同类型内按比例值排列
-function sortPhotosByRatio(photos: typeof import("../store/useStore").initialState.wallPhotos) {
+function sortPhotosByRatio(photos: { src: string; title: string; ratio?: string }[]) {
   return [...photos].sort((a, b) => {
     const ra = getRatioValue(a.ratio, 0);
     const rb = getRatioValue(b.ratio, 0);
