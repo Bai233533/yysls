@@ -22,13 +22,14 @@ import NoticePopup from "../components/NoticePopup";
 import { useStore } from "../store/useStore";
 import { usePermission } from "../hooks/usePermission";
 import { useAuth } from "../contexts/AuthContext";
+import { preloadAll } from "../utils/preload";
 
 const CARD_W = 64; // w-16 = 64px
 const MIN_GAP = 30; // 照片间距
 const TARGET_WIDTH = 4; // 需要填满至少 4 倍屏幕宽度以保证无缝滚动
 
 export default function HomePage() {
-  const { members, currentPage, membersPerPage, setCurrentPage, setSelectedMember, setAddingMember, syncFromCloud, heroBackground, syncStatus } = useStore();
+  const { members, wallPhotos, currentPage, membersPerPage, setCurrentPage, setSelectedMember, setAddingMember, syncFromCloud, heroBackground, syncStatus } = useStore();
   const { showAddMember, canChangeBackground } = usePermission();
   const { member: currentUser } = useAuth();
   const [showBgPicker, setShowBgPicker] = useState(false);
@@ -45,6 +46,18 @@ export default function HomePage() {
   useEffect(() => {
     syncFromCloud();
   }, []); // eslint-disable-line
+
+  // 预加载所有媒体（会员详情 + 照片墙）
+  useEffect(() => {
+    if (members.length > 0) {
+      // 延迟2秒后开始预加载，避免影响首屏渲染
+      const timer = setTimeout(() => {
+        preloadAll(members, wallPhotos).catch(() => {});
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [members.length, wallPhotos.length]); // eslint-disable-line
+
   const totalPages = Math.ceil(members.length / membersPerPage);
   // 按职位排序：社长 > 副社长 > 指挥 > 登录的自己(社员) > 其他社员
   const ROLE_ORDER: Record<string, number> = { "社长": 0, "副社长": 1, "指挥": 2, "社员": 3 };

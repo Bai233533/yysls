@@ -116,6 +116,8 @@ export interface SupabasePhoto {
   sort_order: number;
   is_active: boolean;
   ratio?: string;  // "4:3" | "3:4" | "1:1" | "16:9" | "3:2"
+  uploader?: string;  // 上传者姓名
+  uploader_id?: number;  // 上传者ID
   created_at?: string;
 }
 
@@ -184,6 +186,20 @@ export async function deletePhoto(id: number): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+// Fetch photos by uploader ID (for regular members to view their own photos)
+export async function fetchPhotosByUploader(uploaderId: number): Promise<SupabasePhoto[]> {
+  const { data, error } = await supabase
+    .from("photo")
+    .select("*")
+    .eq("uploader_id", uploaderId)
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("[Supabase] fetchPhotosByUploader error:", error);
+    return [];
+  }
+  return data || [];
 }
 
 /* ================================================================

@@ -29,13 +29,28 @@ export default function MemberDetailModal() {
 
   const member = selectedMember ? members.find((m) => m.id === selectedMember.id) ?? null : null;
 
+  // 检测URL是否为视频
+  const isVideoUrl = (url: string) => {
+    if (!url) return false;
+    return url.includes("data:video") || 
+           url.endsWith(".mp4") || 
+           url.endsWith(".webm") || 
+           url.endsWith(".ogg") ||
+           url.includes("/video/");
+  };
+
   // 合并照片和视频为媒体列表
   const mediaList = useMemo(() => {
     if (!member) return [];
     const list: { type: "image" | "video"; url: string }[] = [];
-    // 主图
-    if (member.detailUrl) list.push({ type: "image", url: member.detailUrl });
-    // 详情媒体（独立列）
+    // 主图（大详情）- 自动检测类型
+    if (member.detailUrl) {
+      list.push({ 
+        type: isVideoUrl(member.detailUrl) ? "video" : "image", 
+        url: member.detailUrl 
+      });
+    }
+    // 详情媒体（小详情）
     if (member.detailMedia1) list.push({ type: (member.detailMedia1Type || "image") as "image" | "video", url: member.detailMedia1 });
     if (member.detailMedia2) list.push({ type: (member.detailMedia2Type || "image") as "image" | "video", url: member.detailMedia2 });
     if (member.detailMedia3) list.push({ type: (member.detailMedia3Type || "image") as "image" | "video", url: member.detailMedia3 });

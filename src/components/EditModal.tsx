@@ -16,15 +16,16 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
-/** 图片上传区域（左栏用） */
+/** 图片/视频上传区域（左栏用） */
 function ImageUpload({
-  label, preview, inputRef, onFile, onClick, required,
+  label, preview, inputRef, onFile, onClick, required, isVideo,
 }: {
   label: string; preview: string;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onFile: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onClick: () => void;
   required?: boolean;
+  isVideo?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -35,7 +36,16 @@ function ImageUpload({
       >
         {preview ? (
           <>
-            <img src={preview} alt={label} className="w-full h-full object-cover" />
+            {isVideo ? (
+              <>
+                <video src={preview} className="w-full h-full object-cover" muted />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <Film size={24} className="text-white/80" />
+                </div>
+              </>
+            ) : (
+              <img src={preview} alt={label} className="w-full h-full object-cover" />
+            )}
             <div className="absolute inset-0 bg-ink-900/0 group-hover:bg-ink-900/30 transition-colors flex items-center justify-center">
               <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-rice-100/90 rounded px-3 py-1.5 flex items-center gap-1.5 text-xs text-ink-700 font-song">
                 <Upload size={12} />更换
@@ -49,18 +59,18 @@ function ImageUpload({
           </div>
         )}
       </div>
-      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+      <input ref={inputRef} type="file" accept="image/*,video/*" className="hidden" onChange={onFile} />
     </div>
   );
 }
 
 /** 详情媒体槽位 - 本地预览，保存时才上传 */
 function DetailSlot({
-  label, url, type, onFileSelect, onRemove, uploading,
+  label, index, url, type, onFileSelect, onRemove, uploading, onCrop,
 }: {
-  label: string; url: string; type: string;
-  onFileSelect: (file: File) => void; onRemove: () => void;
-  uploading: boolean;
+  label: string; index: number; url: string; type: string;
+  onFileSelect: (file: File, type: "image" | "video") => void; onRemove: () => void;
+  uploading: boolean; onCrop?: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -70,12 +80,16 @@ function DetailSlot({
       alert("视频不能超过 50MB");
       return;
     }
-    onFileSelect(file);
+    const fileType = file.type.startsWith("video/") ? "video" : "image";
+    onFileSelect(file, fileType);
     if (inputRef.current) inputRef.current.value = "";
   };
   return (
     <div className="flex items-center gap-3">
-      <label className="text-xs font-song text-ink-600 tracking-wide whitespace-nowrap min-w-[160px]">{label}</label>
+      <label className="text-xs font-song text-ink-600 tracking-wide whitespace-nowrap min-w-[160px]">
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-gold-400/20 text-gold-600 text-[10px] font-bold mr-1.5">{index}</span>
+        {label}
+      </label>
       {url ? (
         <div className="relative w-20 h-20 rounded overflow-hidden border border-gold-400/20 group flex-none">
           {type === "video" ? (
@@ -84,26 +98,68 @@ function DetailSlot({
               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                 <Film size={16} className="text-white/80" />
               </div>
+              {/* 视频比例提示 */}
+              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[8px] text-white/70 text-center py-0.5 font-song">
+                3:4
+              </div>
             </>
           ) : (
             <img src={url} className="w-full h-full object-cover" alt="" />
           )}
-          <button onClick={onRemove}
-            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <Trash2 size={11} />
-          </button>
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+            {/* 图片显示裁剪按钮 */}
+            {type === "image" && onCrop && (
+              <button onClick={onCrop}
+                className="w-6 h-6 rounded-full bg-blue-500/80 text-white flex items-center justify-center hover:bg-blue-500 transition-colors"
+                title="裁剪">
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                </svg>
+              </button>
+            )}
+            <button onClick={onRemove}
+              className="w-6 h-6 rounded-full bg-red-500/80 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
+              <Trash2 size={11} />
+            </button>
+          </div>
         </div>
       ) : (
-        <button onClick={() => inputRef.current?.click()}
-          className="w-20 h-20 rounded border-2 border-dashed border-gold-400/20 flex items-center justify-center text-ink-600/30 hover:border-gold-400/50 hover:text-ink-600/50 transition-colors flex-none"
-          disabled={uploading}>
-          <div className="flex flex-col items-center gap-1">
-            <Upload size={16} />
-            <span className="text-[9px] font-song">上传</span>
-          </div>
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => inputRef.current?.click()}
+            className="w-20 h-20 rounded border-2 border-dashed border-gold-400/20 flex items-center justify-center text-ink-600/30 hover:border-gold-400/50 hover:text-ink-600/50 transition-colors flex-none"
+            disabled={uploading}>
+            <div className="flex flex-col items-center gap-1">
+              <ImagePlus size={16} />
+              <span className="text-[9px] font-song">图片</span>
+            </div>
+          </button>
+          <button onClick={() => {
+            // 创建一个隐藏的input专门用于视频
+            const videoInput = document.createElement("input");
+            videoInput.type = "file";
+            videoInput.accept = "video/*";
+            videoInput.onchange = (e) => {
+              const file = (e.target as HTMLInputElement).files?.[0];
+              if (file) {
+                if (file.size > 50 * 1024 * 1024) {
+                  alert("视频不能超过 50MB");
+                  return;
+                }
+                onFileSelect(file, "video");
+              }
+            };
+            videoInput.click();
+          }}
+            className="w-20 h-20 rounded border-2 border-dashed border-gold-400/20 flex items-center justify-center text-ink-600/30 hover:border-gold-400/50 hover:text-ink-600/50 transition-colors flex-none"
+            disabled={uploading}>
+            <div className="flex flex-col items-center gap-1">
+              <Film size={16} />
+              <span className="text-[9px] font-song">视频</span>
+            </div>
+          </button>
+        </div>
       )}
-      <input ref={inputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleChange} />
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={handleChange} />
     </div>
   );
 }
@@ -123,6 +179,7 @@ export default function EditModal() {
   const [title, setTitle] = useState("");
   const [avatarPreview, setAvatarPreview] = useState("");
   const [detailPreview, setDetailPreview] = useState("");
+  const [detailIsVideo, setDetailIsVideo] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const detailInputRef = useRef<HTMLInputElement>(null);
 
@@ -144,7 +201,7 @@ export default function EditModal() {
   const [pendingDetail, setPendingDetail] = useState<File | null>(null);
   // 裁剪弹窗状态
   const [cropFile, setCropFile] = useState<File | null>(null);
-  const [cropTarget, setCropTarget] = useState<"avatar" | "detail">("avatar");
+  const [cropTarget, setCropTarget] = useState<"avatar" | "detail" | "detailMedia1" | "detailMedia2" | "detailMedia3">("avatar");
 
   useEffect(() => {
     if (editingMember) {
@@ -155,6 +212,12 @@ export default function EditModal() {
       setTitle(editingMember.title || "");
       setAvatarPreview(editingMember.avatarUrl);
       setDetailPreview(editingMember.detailUrl);
+      // 检测详情是否为视频
+      const isDetailVideo = editingMember.detailUrl?.includes("video") || 
+                           editingMember.detailUrl?.endsWith(".mp4") ||
+                           editingMember.detailUrl?.endsWith(".webm") ||
+                           editingMember.detailUrl?.includes("data:video");
+      setDetailIsVideo(isDetailVideo || false);
       setMedia1(editingMember.detailMedia1 || "");
       setMedia2(editingMember.detailMedia2 || "");
       setMedia3(editingMember.detailMedia3 || "");
@@ -163,7 +226,7 @@ export default function EditModal() {
       setMediaType3(editingMember.detailMedia3Type || "image");
     } else if (addingMember) {
       setName(""); setRole("社员"); setGameId(""); setSignature(""); setTitle("");
-      setAvatarPreview(""); setDetailPreview("");
+      setAvatarPreview(""); setDetailPreview(""); setDetailIsVideo(false);
       setMedia1(""); setMedia2(""); setMedia3("");
       setMediaType1("image"); setMediaType2("image"); setMediaType3("image");
     }
@@ -216,12 +279,28 @@ export default function EditModal() {
     if (avatarInputRef.current) avatarInputRef.current.value = "";
   };
 
-  const handleDetailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDetailChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (detailInputRef.current) detailInputRef.current.value = "";
+    
+    // 视频直接使用，不裁剪
+    if (file.type.startsWith("video/")) {
+      if (file.size > 50 * 1024 * 1024) {
+        alert("视频不能超过 50MB");
+        return;
+      }
+      const previewUrl = await fileToBase64(file);
+      setDetailPreview(previewUrl);
+      setPendingDetail(file);
+      setDetailIsVideo(true);
+      return;
+    }
+    
+    // 图片进入裁剪
+    setDetailIsVideo(false);
     setCropFile(file);
     setCropTarget("detail");
-    if (detailInputRef.current) detailInputRef.current.value = "";
   };
 
   // 裁剪确认回调：设置预览 + 创建待上传File
@@ -237,11 +316,37 @@ export default function EditModal() {
     if (cropTarget === "avatar") {
       setAvatarPreview(croppedBase64);
       setPendingAvatar(file);
-    } else {
+    } else if (cropTarget === "detail") {
       setDetailPreview(croppedBase64);
       setPendingDetail(file);
+    } else if (cropTarget === "detailMedia1") {
+      setMedia1(croppedBase64);
+      setMediaType1("image");
+      setPendingFile1(file);
+    } else if (cropTarget === "detailMedia2") {
+      setMedia2(croppedBase64);
+      setMediaType2("image");
+      setPendingFile2(file);
+    } else if (cropTarget === "detailMedia3") {
+      setMedia3(croppedBase64);
+      setMediaType3("image");
+      setPendingFile3(file);
     }
     setCropFile(null);
+  };
+
+  // 详情媒体裁剪
+  const handleDetailCrop = (index: number) => {
+    const mediaUrl = [media1, media2, media3][index];
+    if (!mediaUrl) return;
+    // 将 base64 转为 File 用于裁剪
+    fetch(mediaUrl)
+      .then(res => res.blob())
+      .then(blob => {
+        const file = new File([blob], "crop.jpg", { type: "image/jpeg" });
+        setCropFile(file);
+        setCropTarget(`detailMedia${index + 1}` as "detailMedia1" | "detailMedia2" | "detailMedia3");
+      });
   };
 
   // 本地预览，不立即上传
@@ -375,7 +480,7 @@ export default function EditModal() {
             {/* Left: Images */}
             <div className="w-[200px] flex-none flex flex-col gap-4">
               <ImageUpload label="展示图片" preview={avatarPreview} inputRef={avatarInputRef} onFile={handleAvatarChange} onClick={() => avatarInputRef.current?.click()} required />
-              <ImageUpload label="详情图片" preview={detailPreview} inputRef={detailInputRef} onFile={handleDetailChange} onClick={() => detailInputRef.current?.click()} required />
+              <ImageUpload label="大详情图片/视频" preview={detailPreview} inputRef={detailInputRef} onFile={handleDetailChange} onClick={() => detailInputRef.current?.click()} required isVideo={detailIsVideo} />
             </div>
 
             {/* Right */}
@@ -427,18 +532,21 @@ export default function EditModal() {
 
               <div className="border-t border-gold-400/10" />
 
-              {/* 详情媒体 */}
+              {/* 小详情媒体 */}
               <div>
                 <label className="block text-xs font-song text-ink-600 mb-2 tracking-wide">
-                  详情图片/视频 <span className="text-gold-400">（最多3个，详情页可左右浏览）</span>
+                  小详情图片/视频 <span className="text-gold-400">（最多3个，详情页可左右浏览）</span>
                 </label>
                 <div className="flex flex-col gap-3">
-                  <DetailSlot label="第一个详情图片或视频" url={media1} type={media1Type} uploading={uploading}
-                    onFileSelect={(f) => handleMediaSelect(0, f)} onRemove={() => handleMediaRemove(0)} />
-                  <DetailSlot label="第二个详情图片或视频" url={media2} type={media2Type} uploading={uploading}
-                    onFileSelect={(f) => handleMediaSelect(1, f)} onRemove={() => handleMediaRemove(1)} />
-                  <DetailSlot label="第三个详情图片或视频" url={media3} type={media3Type} uploading={uploading}
-                    onFileSelect={(f) => handleMediaSelect(2, f)} onRemove={() => handleMediaRemove(2)} />
+                  <DetailSlot label="小详情" index={1} url={media1} type={media1Type} uploading={uploading}
+                    onFileSelect={(f, t) => handleMediaSelect(0, f)} onRemove={() => handleMediaRemove(0)}
+                    onCrop={media1Type === "image" ? () => handleDetailCrop(0) : undefined} />
+                  <DetailSlot label="小详情" index={2} url={media2} type={media2Type} uploading={uploading}
+                    onFileSelect={(f, t) => handleMediaSelect(1, f)} onRemove={() => handleMediaRemove(1)}
+                    onCrop={media2Type === "image" ? () => handleDetailCrop(1) : undefined} />
+                  <DetailSlot label="小详情" index={3} url={media3} type={media3Type} uploading={uploading}
+                    onFileSelect={(f, t) => handleMediaSelect(2, f)} onRemove={() => handleMediaRemove(2)}
+                    onCrop={media3Type === "image" ? () => handleDetailCrop(2) : undefined} />
                 </div>
               </div>
 

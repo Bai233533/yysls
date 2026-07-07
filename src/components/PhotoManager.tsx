@@ -1,21 +1,21 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   fetchAllPhotos,
+  fetchPhotosByUploader,
   createPhoto,
+  updatePhoto,
   deletePhoto,
   uploadToStorage,
   SupabasePhoto,
 } from "../lib/supabase";
-import { useStore } from "../store/useStore";
+import { useAuth } from "../contexts/AuthContext";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import LoadingOverlay from "./LoadingOverlay";
 
 /* ================================================================
- *  照片墙管理弹窗（简化版）
- *  - 只需填写名称 + 上传图片 + 自由裁剪
- *  - 支持批量上传
- *  - 按添加时间自动排序
- *  - 显示照片数量统计
+ *  照片墙管理弹窗
+ *  - 管理员（社长/副社长/指挥）：可以编辑所有照片
+ *  - 社员：可以查看和管理自己上传的照片
  * ================================================================ */
 
 interface Props {
@@ -31,7 +31,7 @@ interface CropState {
 
 export default function PhotoManager({ onClose }: Props) {
   useBodyScrollLock(true);
-  const loadWallPhotos = useStore((s) => s.loadWallPhotos);
+  const { member: currentUser } = useAuth();
 
   const [photos, setPhotos] = useState<SupabasePhoto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,13 +45,16 @@ export default function PhotoManager({ onClose }: Props) {
     "快马加鞭赶来...",
     "御剑飞行中...",
   ][Math.floor(Math.random() * 7)]);
-  const [mode, setMode] = useState<"list" | "add">("list");
+  const [mode, setMode] = useState<"list" | "add" | "edit" | "my-photos">("list");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
-  // 添加表单
+  // 编辑状态
+  const [editingPhoto, setEditingPhoto] = useState<SupabasePhoto | null>(null);
+
+  // 添加/编辑表单
   const [formName, setFormName] = useState("");
   const [formSrc, setFormSrc] = useState("");
   const [formRatio, setFormRatio] = useState("free");
@@ -65,6 +68,10 @@ export default function PhotoManager({ onClose }: Props) {
   const cropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // 权限判断
+  const isAdmin = currentUser?.role === "社长" || currentUser?.role === "副社长" || currentUser?.role === "指挥";
+  const isMember = currentUser?.role === "社员";
+
   const loadAll = useCallback(async () => {
     setLoading(true);
     const data = await fetchAllPhotos();
@@ -72,7 +79,21 @@ export default function PhotoManager({ onClose }: Props) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
+  const loadMyPhotos = useCallback(async () => {
+    if (!currentUser?.id) return;
+    setLoading(true);
+    const data = await fetchPhotosByUploader(currentUser.id);
+    setPhotos(data);
+    setLoading(false);
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    if (mode === "my-photos") {
+      loadMyPhotos();
+    } else {
+      loadAll();
+    }
+  }, [mode, loadAll, loadMyPhotos]);
 
   const filtered = photos.filter((p) => p.name.includes(search));
 
@@ -92,7 +113,6 @@ export default function PhotoManager({ onClose }: Props) {
     if (!container) return;
     const cw = container.clientWidth;
     const ch = container.clientHeight;
-    // 初始裁剪框居中，占 80%
     const dw = Math.min(cw * 0.8, img.clientWidth * 0.8);
     const dh = Math.min(ch * 0.8, img.clientHeight * 0.8);
     setCropImg(img);
@@ -107,7 +127,6 @@ export default function PhotoManager({ onClose }: Props) {
     img.style.objectFit = "contain";
   };
 
-  // 裁剪框拖拽（移动/缩放）
   const handleCropMouseDown = (e: React.MouseEvent, action: "move" | "nw" | "ne" | "sw" | "se") => {
     e.preventDefault();
     e.stopPropagation();
@@ -131,7 +150,6 @@ export default function PhotoManager({ onClose }: Props) {
         next.x = Math.max(0, Math.min(cw - s.w, s.x + dx));
         next.y = Math.max(0, Math.min(ch - s.h, s.y + dy));
       } else {
-        // 缩放：各角拖拽
         if (cropAction === "se") {
           next.w = Math.max(60, Math.min(cw - s.x, s.w + dx));
           next.h = Math.max(60, Math.min(ch - s.y, s.h + dy));
@@ -168,7 +186,6 @@ export default function PhotoManager({ onClose }: Props) {
     }
   }, [cropAction, handleCropMouseMove, handleCropMouseUp]);
 
-  // 裁剪确认
   const handleCropConfirm = () => {
     if (!cropImg || !cropRef.current) return;
     const container = cropRef.current;
@@ -179,7 +196,6 @@ export default function PhotoManager({ onClose }: Props) {
     const maxPx = 1200;
     const outW = Math.round(cropRect.w * scaleX);
     const outH = Math.round(cropRect.h * scaleY);
-    // 按比例缩放输出，最大边不超过 maxPx
     const scale = Math.min(maxPx / outW, maxPx / outH, 1);
     canvas.width = Math.round(outW * scale);
     canvas.height = Math.round(outH * scale);
@@ -199,7 +215,6 @@ export default function PhotoManager({ onClose }: Props) {
     );
     setFormSrc(canvas.toDataURL("image/jpeg", 0.92));
 
-    // 计算裁剪比例
     const ratio = outW / outH;
     const stdRatios: [string, number][] = [
       ["1:1", 1], ["4:3", 4/3], ["3:4", 3/4], ["16:9", 16/9], ["3:2", 3/2], ["2:3", 2/3],
@@ -214,46 +229,74 @@ export default function PhotoManager({ onClose }: Props) {
     setCropImg(null);
   };
 
-  // ========== 保存 ==========
+  // ========== 开始编辑 ==========
+  const handleStartEdit = (photo: SupabasePhoto) => {
+    setEditingPhoto(photo);
+    setFormName(photo.name);
+    setFormSrc(photo.src);
+    setFormRatio(photo.ratio || "free");
+    setMode("edit");
+  };
+
+  // ========== 保存（添加或编辑） ==========
   const handleSave = async () => {
     if (!formName.trim() || !formSrc) return;
     setSaving(true);
     setSaveError(null);
     try {
-      // 上传到 Storage
-      const res = await fetch(formSrc);
-      const blob = await res.blob();
-      const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
-      const url = await uploadToStorage(file, "member-photos", "wall-photos");
+      let url = formSrc;
 
-      if (!url) {
-        setSaveError("上传失败，请稍后再试");
-        setSaving(false);
-        return;
+      // 如果是新上传的图片（base64），上传到 Storage
+      if (formSrc.startsWith("data:")) {
+        const res = await fetch(formSrc);
+        const blob = await res.blob();
+        const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
+        const uploadedUrl = await uploadToStorage(file, "member-photos", "wall-photos");
+        if (!uploadedUrl) {
+          setSaveError("上传失败，请稍后再试");
+          setSaving(false);
+          return;
+        }
+        url = uploadedUrl;
       }
 
-      const id = await createPhoto({
-        name: formName.trim(),
-        src: url,
-        sort_order: photos.length,
-        is_active: true,
-        ratio: formRatio,
-      });
-      if (!id) {
-        setSaveError("保存失败，请稍后再试");
-        setSaving(false);
-        return;
+      if (mode === "edit" && editingPhoto) {
+        // 编辑模式：更新现有照片
+        await updatePhoto(editingPhoto.id, {
+          name: formName.trim(),
+          src: url,
+          ratio: formRatio,
+        });
+      } else {
+        // 添加模式：创建新照片
+        await createPhoto({
+          name: formName.trim(),
+          src: url,
+          sort_order: photos.length,
+          is_active: true,
+          ratio: formRatio,
+          uploader: currentUser?.name || "匿名",
+          uploader_id: currentUser?.id,
+        });
       }
+
       await loadAll();
-      await loadWallPhotos();
-      setMode("list");
-      setFormName("");
-      setFormSrc("");
-      setFormRatio("free");
+      resetForm();
     } catch (e) {
       setSaveError("操作失败: " + (e instanceof Error ? e.message : String(e)));
     }
     setSaving(false);
+  };
+
+  const resetForm = () => {
+    setMode("list");
+    setEditingPhoto(null);
+    setFormName("");
+    setFormSrc("");
+    setFormRatio("free");
+    setCropFile(null);
+    setCropImg(null);
+    setSaveError(null);
   };
 
   // ========== 删除 ==========
@@ -268,11 +311,16 @@ export default function PhotoManager({ onClose }: Props) {
   const handleDelete = async (id: number) => {
     setDeleteId(null);
     await deletePhoto(id);
-    // 乐观更新：从本地列表移除
     setPhotos((prev) => prev.filter((p) => p.id !== id));
-    // 弹出趣味提示
     setToast(TOAST_MSGS[Math.floor(Math.random() * TOAST_MSGS.length)]);
     setTimeout(() => setToast(null), 2500);
+  };
+
+  // 判断是否有权编辑某张照片
+  const canEditPhoto = (photo: SupabasePhoto) => {
+    if (isAdmin) return true;
+    if (isMember && photo.uploader_id === currentUser?.id) return true;
+    return false;
   };
 
   return (
@@ -281,7 +329,7 @@ export default function PhotoManager({ onClose }: Props) {
       style={{ background: "rgba(0,0,0,0.85)" }}
       onClick={onClose}
     >
-      <LoadingOverlay show={saving} message="正在上传照片..." />
+      <LoadingOverlay show={saving} message={mode === "edit" ? "正在更新照片..." : "正在上传照片..."} />
       <div
         className="relative w-full h-full max-w-[1400px] max-h-[90vh] mx-4 flex flex-col rounded-lg overflow-hidden"
         style={{ background: "linear-gradient(135deg, #1a1510, #0f0d0a)" }}
@@ -290,7 +338,9 @@ export default function PhotoManager({ onClose }: Props) {
         {/* 顶部栏 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gold-400/20">
           <div className="flex items-center gap-4">
-            <h2 className="font-calligraphy text-gold-200 text-xl tracking-widest">管理照片墙</h2>
+            <h2 className="font-calligraphy text-gold-200 text-xl tracking-widest">
+              {mode === "my-photos" ? "我的照片" : "管理照片墙"}
+            </h2>
             <span className="text-xs font-song px-2 py-0.5 rounded bg-gold-400/10 text-gold-400/70">
               共 {photos.length} 张
             </span>
@@ -304,12 +354,33 @@ export default function PhotoManager({ onClose }: Props) {
               className="px-3 py-1.5 rounded text-sm font-song bg-ink-900/60 border border-gold-400/20 text-gold-200 placeholder:text-gold-200/30 outline-none focus:border-gold-400/40"
               style={{ width: 200 }}
             />
-            <button
-              onClick={() => setMode("add")}
-              className="btn-ink px-4 py-1.5 rounded text-sm font-song active:scale-95"
-            >
-              + 添加照片
-            </button>
+            {/* 社员显示"查看我的照片"按钮 */}
+            {isMember && mode !== "my-photos" && (
+              <button
+                onClick={() => setMode("my-photos")}
+                className="btn-ink px-4 py-1.5 rounded text-sm font-song active:scale-95"
+              >
+                查看我的照片
+              </button>
+            )}
+            {/* 从"我的照片"返回全部 */}
+            {mode === "my-photos" && (
+              <button
+                onClick={() => setMode("list")}
+                className="btn-ink px-4 py-1.5 rounded text-sm font-song active:scale-95"
+              >
+                返回全部
+              </button>
+            )}
+            {/* 管理员显示"添加照片"按钮 */}
+            {isAdmin && mode === "list" && (
+              <button
+                onClick={() => setMode("add")}
+                className="btn-ink px-4 py-1.5 rounded text-sm font-song active:scale-95"
+              >
+                + 添加照片
+              </button>
+            )}
             <button
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-full border border-gold-400/20 text-gold-200/40 hover:text-gold-200 hover:border-gold-400/40 transition-colors"
@@ -321,10 +392,12 @@ export default function PhotoManager({ onClose }: Props) {
 
         {/* 内容区 */}
         <div className="flex-1 overflow-y-auto p-6">
-          {mode === "add" ? (
-            /* ===== 添加照片面板 ===== */
+          {mode === "add" || mode === "edit" ? (
+            /* ===== 添加/编辑照片面板 ===== */
             <div className="max-w-[640px] mx-auto">
-              <h3 className="font-calligraphy text-gold-200 text-lg tracking-widest mb-4">添加照片</h3>
+              <h3 className="font-calligraphy text-gold-200 text-lg tracking-widest mb-4">
+                {mode === "edit" ? "编辑照片" : "添加照片"}
+              </h3>
 
               {/* 名称输入 */}
               <div className="mb-4">
@@ -387,7 +460,6 @@ export default function PhotoManager({ onClose }: Props) {
                       }}
                       onMouseDown={(e) => handleCropMouseDown(e, "move")}
                     >
-                      {/* 九宫格线 */}
                       <div className="absolute inset-0 pointer-events-none">
                         <div className="absolute left-1/3 top-0 bottom-0 w-px bg-white/25" />
                         <div className="absolute left-2/3 top-0 bottom-0 w-px bg-white/25" />
@@ -395,7 +467,6 @@ export default function PhotoManager({ onClose }: Props) {
                         <div className="absolute top-2/3 left-0 right-0 h-px bg-white/25" />
                       </div>
 
-                      {/* 四角拖拽手柄 */}
                       {(["nw", "ne", "sw", "se"] as const).map((pos) => (
                         <div
                           key={pos}
@@ -413,7 +484,6 @@ export default function PhotoManager({ onClose }: Props) {
                     </div>
                   </div>
 
-                  {/* 裁剪按钮组 */}
                   <div className="mt-3 flex gap-3">
                     <button
                       onClick={() => fileInputRef.current?.click()}
@@ -436,12 +506,37 @@ export default function PhotoManager({ onClose }: Props) {
                 </div>
               )}
 
-              {/* 已裁剪预览 */}
+              {/* 已裁剪预览（悬停显示操作） */}
               {formSrc && !cropFile && (
                 <div className="mb-4">
                   <label className="block font-song text-gold-200/60 text-sm mb-1.5">预览</label>
-                  <div className="w-full h-48 rounded border border-gold-400/20 overflow-hidden bg-ink-900/40">
+                  <div className="group relative w-full h-48 rounded border border-gold-400/20 overflow-hidden bg-ink-900/40 cursor-pointer">
                     <img src={formSrc} className="w-full h-full object-contain" alt="预览" />
+                    {/* 悬浮遮罩 + 操作按钮 */}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                      <button
+                        onClick={() => {
+                          // 加载当前图片到裁剪器
+                          setCropFile(formSrc);
+                          setFormSrc("");
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 rounded text-sm font-song border border-gold-400/50 text-gold-200 hover:bg-gold-400/20 backdrop-blur-sm transition-all"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                        </svg>
+                        重新裁剪
+                      </button>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2 px-4 py-2 rounded text-sm font-song border border-gold-400/50 text-gold-200 hover:bg-gold-400/20 backdrop-blur-sm transition-all"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                        </svg>
+                        重新上传
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -470,7 +565,7 @@ export default function PhotoManager({ onClose }: Props) {
                   {saving ? "保存中..." : "保存"}
                 </button>
                 <button
-                  onClick={() => { setMode("list"); setFormName(""); setFormSrc(""); setCropFile(null); setCropImg(null); setSaveError(null); }}
+                  onClick={resetForm}
                   className="flex-1 py-2.5 rounded text-sm font-song border border-gold-400/20 text-gold-200/50 hover:text-gold-200 hover:border-gold-400/40 transition-colors"
                 >
                   返回
@@ -497,7 +592,7 @@ export default function PhotoManager({ onClose }: Props) {
               ) : filtered.length === 0 ? (
                 <div className="text-center py-16">
                   <p className="font-song text-gold-200/30 text-sm">
-                    {search ? "未找到匹配照片" : "暂无照片，点击「添加照片」开始"}
+                    {search ? "未找到匹配照片" : mode === "my-photos" ? "你还没有上传过照片" : "暂无照片，点击「添加照片」开始"}
                   </p>
                 </div>
               ) : (
@@ -512,16 +607,32 @@ export default function PhotoManager({ onClose }: Props) {
                         />
                       </div>
                       <p className="mt-1.5 font-song text-xs text-gold-200/60 truncate">{p.name}</p>
+                      {p.uploader && (
+                        <p className="font-song text-xs text-gold-200/30 truncate">上传者: {p.uploader}</p>
+                      )}
                       {/* 悬停操作 */}
-                      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1.5">
-                        <button
-                          onClick={() => setDeleteId(p.id)}
-                          className="w-7 h-7 rounded-full flex items-center justify-center text-xs border border-red-400/40 bg-black/60 text-red-400 hover:bg-red-400/20 backdrop-blur-sm"
-                          title="删除"
-                        >
-                          ✕
-                        </button>
-                      </div>
+                      {canEditPhoto(p) && (
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1.5">
+                          {/* 编辑按钮 */}
+                          <button
+                            onClick={() => handleStartEdit(p)}
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-xs border border-gold-400/40 bg-black/60 text-gold-400 hover:bg-gold-400/20 backdrop-blur-sm"
+                            title="编辑"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                            </svg>
+                          </button>
+                          {/* 删除按钮 */}
+                          <button
+                            onClick={() => setDeleteId(p.id)}
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-xs border border-red-400/40 bg-black/60 text-red-400 hover:bg-red-400/20 backdrop-blur-sm"
+                            title="删除"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
