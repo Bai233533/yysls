@@ -1,7 +1,7 @@
 import { useRef, useEffect, useCallback } from "react";
 import { useStore } from "../store/useStore";
 
-const MUSIC_SRC = "/letter-冰心.mp3";
+const MUSIC_SRC = "/夜曲-周杰伦.mp3";
 
 // 全局音频引用，供 MusicControl 使用
 export let audioEl: HTMLAudioElement | null = null;
