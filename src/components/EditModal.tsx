@@ -64,13 +64,24 @@ function ImageUpload({
   );
 }
 
+/** 视频比例预设 */
+const VIDEO_RATIO_PRESETS = [
+  { label: "3:4", value: "3:4" },
+  { label: "1:1", value: "1:1" },
+  { label: "16:9", value: "16:9" },
+  { label: "4:3", value: "4:3" },
+  { label: "9:16", value: "9:16" },
+];
+
 /** 详情媒体槽位 - 本地预览，保存时才上传 */
 function DetailSlot({
   label, index, url, type, onFileSelect, onRemove, uploading, onCrop,
+  videoRatio, onVideoRatioChange,
 }: {
   label: string; index: number; url: string; type: string;
   onFileSelect: (file: File, type: "image" | "video") => void; onRemove: () => void;
   uploading: boolean; onCrop?: () => void;
+  videoRatio?: string; onVideoRatioChange?: (ratio: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -84,6 +95,20 @@ function DetailSlot({
     onFileSelect(file, fileType);
     if (inputRef.current) inputRef.current.value = "";
   };
+
+  // 计算视频比例框的宽高比样式
+  const getVideoRatioStyle = (): React.CSSProperties => {
+    const r = videoRatio || "3:4";
+    const [w, h] = r.split(":").map(Number);
+    const aspect = w / h;
+    // 在 80x80 的容器内，以最大边为基准
+    if (aspect >= 1) {
+      return { width: "100%", height: `${(1 / aspect) * 100}%`, top: `${(1 - 1 / aspect) * 50}%`, left: 0 };
+    } else {
+      return { height: "100%", width: `${aspect * 100}%`, left: `${(1 - aspect) * 50}%`, top: 0 };
+    }
+  };
+
   return (
     <div className="flex items-center gap-3">
       <label className="text-xs font-song text-ink-600 tracking-wide whitespace-nowrap min-w-[160px]">
@@ -91,37 +116,60 @@ function DetailSlot({
         {label}
       </label>
       {url ? (
-        <div className="relative w-20 h-20 rounded overflow-hidden border border-gold-400/20 group flex-none">
-          {type === "video" ? (
-            <>
-              <video src={url} className="w-full h-full object-cover" muted />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                <Film size={16} className="text-white/80" />
-              </div>
-              {/* 视频比例提示 */}
-              <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[8px] text-white/70 text-center py-0.5 font-song">
-                3:4
-              </div>
-            </>
-          ) : (
-            <img src={url} className="w-full h-full object-cover" alt="" />
-          )}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-            {/* 图片显示裁剪按钮 */}
-            {type === "image" && onCrop && (
-              <button onClick={onCrop}
-                className="w-6 h-6 rounded-full bg-blue-500/80 text-white flex items-center justify-center hover:bg-blue-500 transition-colors"
-                title="裁剪">
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-                </svg>
-              </button>
+        <div className="flex items-start gap-2">
+          <div className="relative w-20 h-20 rounded overflow-hidden border border-gold-400/20 group flex-none">
+            {type === "video" ? (
+              <>
+                <video src={url} className="w-full h-full object-cover" muted />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                  <Film size={16} className="text-white/80" />
+                </div>
+                {/* 视频比例提示 */}
+                <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-[8px] text-white/70 text-center py-0.5 font-song">
+                  {videoRatio || "3:4"}
+                </div>
+              </>
+            ) : (
+              <img src={url} className="w-full h-full object-cover" alt="" />
             )}
-            <button onClick={onRemove}
-              className="w-6 h-6 rounded-full bg-red-500/80 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
-              <Trash2 size={11} />
-            </button>
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+              {/* 图片裁剪按钮 */}
+              {type === "image" && onCrop && (
+                <button onClick={onCrop}
+                  className="w-6 h-6 rounded-full bg-blue-500/80 text-white flex items-center justify-center hover:bg-blue-500 transition-colors"
+                  title="裁剪">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+                  </svg>
+                </button>
+              )}
+              <button onClick={onRemove}
+                className="w-6 h-6 rounded-full bg-red-500/80 text-white flex items-center justify-center hover:bg-red-500 transition-colors">
+                <Trash2 size={11} />
+              </button>
+            </div>
           </div>
+          {/* 视频比例选择器 */}
+          {type === "video" && onVideoRatioChange && (
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] font-song text-ink-600/50">显示比例</span>
+              <div className="flex flex-wrap gap-1">
+                {VIDEO_RATIO_PRESETS.map((p) => (
+                  <button
+                    key={p.value}
+                    onClick={() => onVideoRatioChange(p.value)}
+                    className={`px-1.5 py-0.5 rounded text-[8px] font-song border transition-all ${
+                      (videoRatio || "3:4") === p.value
+                        ? "bg-gold-400/20 border-gold-400/50 text-gold-600"
+                        : "border-gold-400/10 text-ink-600/40 hover:border-gold-400/30 hover:text-ink-600/60"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex gap-2">
@@ -202,6 +250,11 @@ export default function EditModal() {
   // 裁剪弹窗状态
   const [cropFile, setCropFile] = useState<File | null>(null);
   const [cropTarget, setCropTarget] = useState<"avatar" | "detail" | "detailMedia1" | "detailMedia2" | "detailMedia3">("avatar");
+  // 视频显示比例
+  const [video1Ratio, setVideo1Ratio] = useState("3:4");
+  const [video2Ratio, setVideo2Ratio] = useState("3:4");
+  const [video3Ratio, setVideo3Ratio] = useState("3:4");
+  const [detailVideoRatio, setDetailVideoRatio] = useState("3:4");
 
   useEffect(() => {
     if (editingMember) {
@@ -230,9 +283,10 @@ export default function EditModal() {
       setMedia1(""); setMedia2(""); setMedia3("");
       setMediaType1("image"); setMediaType2("image"); setMediaType3("image");
     }
-    // 重置待上传文件
+    // 重置待上传文件和视频比例
     setPendingAvatar(null); setPendingDetail(null);
     setPendingFile1(null); setPendingFile2(null); setPendingFile3(null);
+    setVideo1Ratio("3:4"); setVideo2Ratio("3:4"); setVideo3Ratio("3:4"); setDetailVideoRatio("3:4");
   }, [editingMember, addingMember]);
 
   // 根据当前用户和编辑目标计算可选职位（必须在 early return 之前）
@@ -480,6 +534,27 @@ export default function EditModal() {
             <div className="w-[200px] flex-none flex flex-col gap-4">
               <ImageUpload label="展示图片" preview={avatarPreview} inputRef={avatarInputRef} onFile={handleAvatarChange} onClick={() => avatarInputRef.current?.click()} required />
               <ImageUpload label="大详情图片/视频" preview={detailPreview} inputRef={detailInputRef} onFile={handleDetailChange} onClick={() => detailInputRef.current?.click()} required isVideo={detailIsVideo} />
+              {/* 大详情视频比例选择器 */}
+              {detailIsVideo && detailPreview && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-song text-ink-600/50">视频显示比例</span>
+                  <div className="flex flex-wrap gap-1">
+                    {VIDEO_RATIO_PRESETS.map((p) => (
+                      <button
+                        key={p.value}
+                        onClick={() => setDetailVideoRatio(p.value)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-song border transition-all ${
+                          detailVideoRatio === p.value
+                            ? "bg-gold-400/20 border-gold-400/50 text-gold-600"
+                            : "border-gold-400/10 text-ink-600/40 hover:border-gold-400/30 hover:text-ink-600/60"
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right */}
@@ -539,13 +614,16 @@ export default function EditModal() {
                 <div className="flex flex-col gap-3">
                   <DetailSlot label="小详情" index={1} url={media1} type={media1Type} uploading={uploading}
                     onFileSelect={(f, t) => handleMediaSelect(0, f)} onRemove={() => handleMediaRemove(0)}
-                    onCrop={media1Type === "image" ? () => handleDetailCrop(0) : undefined} />
+                    onCrop={media1Type === "image" ? () => handleDetailCrop(0) : undefined}
+                    videoRatio={video1Ratio} onVideoRatioChange={setVideo1Ratio} />
                   <DetailSlot label="小详情" index={2} url={media2} type={media2Type} uploading={uploading}
                     onFileSelect={(f, t) => handleMediaSelect(1, f)} onRemove={() => handleMediaRemove(1)}
-                    onCrop={media2Type === "image" ? () => handleDetailCrop(1) : undefined} />
+                    onCrop={media2Type === "image" ? () => handleDetailCrop(1) : undefined}
+                    videoRatio={video2Ratio} onVideoRatioChange={setVideo2Ratio} />
                   <DetailSlot label="小详情" index={3} url={media3} type={media3Type} uploading={uploading}
                     onFileSelect={(f, t) => handleMediaSelect(2, f)} onRemove={() => handleMediaRemove(2)}
-                    onCrop={media3Type === "image" ? () => handleDetailCrop(2) : undefined} />
+                    onCrop={media3Type === "image" ? () => handleDetailCrop(2) : undefined}
+                    videoRatio={video3Ratio} onVideoRatioChange={setVideo3Ratio} />
                 </div>
               </div>
 

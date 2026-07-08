@@ -4,11 +4,12 @@ import { useStore } from "../store/useStore";
 import { useAuth } from "../contexts/AuthContext";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import LoadingOverlay from "./LoadingOverlay";
+import VideoCoverSelector from "./VideoCoverSelector";
 
 /* ================================================================
- *  照片上传弹窗（社员用）
- *  - 选择图片 → 自由裁剪 → 填写名称 → 上传
- *  - 无列表/删除/编辑功能
+ *  照片/视频上传弹窗（社员用）
+ *  - 选择图片 → 裁剪 → 填写名称 → 上传
+ *  - 选择视频 → 直接预览 → 填写名称 → 上传
  * ================================================================ */
 
 interface Props {
@@ -29,12 +30,16 @@ export default function PhotoUploadModal({ onClose }: Props) {
 
   const [formName, setFormName] = useState("");
   const [formSrc, setFormSrc] = useState("");
-  const [formRatio, setFormRatio] = useState("free"); // 实际裁剪比例
+  const [formRatio, setFormRatio] = useState("free");
+  const [mediaType, setMediaType] = useState<"image" | "video">("image");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string>(""); // 视频封面
+  const [showCoverSelector, setShowCoverSelector] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  // 裁剪状态
+  // 裁剪状态（仅图片使用）
   const [cropFile, setCropFile] = useState<string | null>(null);
   const [cropImg, setCropImg] = useState<HTMLImageElement | null>(null);
   const [cropRect, setCropRect] = useState<CropState>({ x: 0, y: 0, w: 200, h: 150 });
@@ -43,16 +48,33 @@ export default function PhotoUploadModal({ onClose }: Props) {
   const cropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ========== 裁剪逻辑 ==========
+  // ========== 文件选择 ==========
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setCropFile(url);
-    setFormSrc("");
-    setFormRatio("free");
+
+    const isVideo = file.type.startsWith("video/");
+    if (isVideo) {
+      // 视频：直接预览，跳过裁剪
+      setMediaType("video");
+      setVideoFile(file);
+      setFormSrc(URL.createObjectURL(file));
+      setFormRatio("free");
+      setCropFile(null);
+    } else {
+      // 图片：进入裁剪流程
+      setMediaType("image");
+      setVideoFile(null);
+      const url = URL.createObjectURL(file);
+      setCropFile(url);
+      setFormSrc("");
+      setFormRatio("free");
+    }
+    // 重置 input 以便重复选择同一文件
+    e.target.value = "";
   };
 
+  // ========== 裁剪逻辑（仅图片） ==========
   const handleCropImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     const container = cropRef.current;
@@ -123,7 +145,6 @@ export default function PhotoUploadModal({ onClose }: Props) {
     }
   }, [cropAction, handleCropMouseMove, handleCropMouseUp]);
 
-  // 裁剪确认
   const handleCropConfirm = () => {
     if (!cropImg || !cropRef.current) return;
     const scaleX = cropImg.naturalWidth / cropImg.clientWidth;
@@ -140,7 +161,6 @@ export default function PhotoUploadModal({ onClose }: Props) {
     ctx.drawImage(cropImg, cropRect.x * scaleX, cropRect.y * scaleY, outW, outH, 0, 0, canvas.width, canvas.height);
     setFormSrc(canvas.toDataURL("image/jpeg", 0.92));
 
-    // 计算裁剪比例：匹配标准比例或标记为 free
     const ratio = outW / outH;
     const stdRatios: [string, number][] = [
       ["1:1", 1], ["4:3", 4/3], ["3:4", 3/4], ["16:9", 16/9], ["3:2", 3/2], ["2:3", 2/3],
@@ -150,38 +170,61 @@ export default function PhotoUploadModal({ onClose }: Props) {
       if (Math.abs(ratio - std) < 0.08) { matched = name; break; }
     }
     setFormRatio(matched);
-
     setCropFile(null);
     setCropImg(null);
   };
 
-  // 上传
+  // ========== 上传 ==========
   const handleSave = async () => {
     if (!formName.trim() || !formSrc) return;
     setSaving(true);
     setError(null);
     try {
-      // 将 base64 转为 Blob 并上传到 Storage（比存 base64 快得多）
-      const res = await fetch(formSrc);
-      const blob = await res.blob();
-      const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
-      const url = await uploadToStorage(file, "member-photos", "wall-photos");
+      let url = formSrc;
+      let coverUrlFinal = "";
 
-      if (!url) {
-        setError("上传失败，请稍后再试");
-        setSaving(false);
-        return;
+      if (mediaType === "video" && videoFile) {
+        // 视频：直接上传原始文件
+        const uploadedUrl = await uploadToStorage(videoFile, "member-photos", "wall-photos");
+        if (!uploadedUrl) {
+          setError("上传失败，请稍后再试");
+          setSaving(false);
+          return;
+        }
+        url = uploadedUrl;
+
+        // 上传封面图
+        if (coverPreview) {
+          const coverRes = await fetch(coverPreview);
+          const coverBlob = await coverRes.blob();
+          const coverFile = new File([coverBlob], "cover.jpg", { type: "image/jpeg" });
+          const coverUrl = await uploadToStorage(coverFile, "member-photos", "wall-covers");
+          if (coverUrl) {
+            coverUrlFinal = coverUrl;
+          }
+        }
+      } else if (formSrc.startsWith("data:")) {
+        // 图片 base64：转 Blob 后上传
+        const res = await fetch(formSrc);
+        const blob = await res.blob();
+        const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
+        const uploadedUrl = await uploadToStorage(file, "member-photos", "wall-photos");
+        if (!uploadedUrl) {
+          setError("上传失败，请稍后再试");
+          setSaving(false);
+          return;
+        }
+        url = uploadedUrl;
       }
-
-      // 计算实际裁剪比例
-      const ratio = formRatio || "free";
 
       const id = await createPhoto({
         name: formName.trim(),
         src: url,
         sort_order: 0,
         is_active: true,
-        ratio,
+        ratio: mediaType === "video" ? "free" : formRatio,
+        media_type: mediaType,
+        cover_url: coverUrlFinal || undefined,
         uploader: currentUser?.name || "匿名",
         uploader_id: currentUser?.id,
       });
@@ -198,13 +241,26 @@ export default function PhotoUploadModal({ onClose }: Props) {
     setSaving(false);
   };
 
+  // 清除当前选择
+  const clearSelection = () => {
+    setFormSrc("");
+    setFormRatio("free");
+    setMediaType("image");
+    setVideoFile(null);
+    setCoverPreview("");
+    setCropFile(null);
+    setCropImg(null);
+  };
+
+  const canSave = formName.trim() && formSrc && !saving;
+
   return (
     <div
       className="fixed inset-0 z-[200] flex items-center justify-center"
       style={{ background: "rgba(0,0,0,0.85)" }}
       onClick={onClose}
     >
-      <LoadingOverlay show={saving} message="正在上传照片..." />
+      <LoadingOverlay show={saving} message={mediaType === "video" ? "正在上传视频..." : "正在上传照片..."} />
       <div
         className="relative w-full max-w-[560px] max-h-[90vh] mx-4 flex flex-col rounded-lg overflow-hidden"
         style={{ background: "linear-gradient(135deg, #1a1510, #0f0d0a)" }}
@@ -212,7 +268,7 @@ export default function PhotoUploadModal({ onClose }: Props) {
       >
         {/* 顶部栏 */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gold-400/20">
-          <h2 className="font-calligraphy text-gold-200 text-lg tracking-widest">上传照片</h2>
+          <h2 className="font-calligraphy text-gold-200 text-lg tracking-widest">上传照片/视频</h2>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full border border-gold-400/20 text-gold-200/40 hover:text-gold-200 hover:border-gold-400/40 transition-colors"
@@ -226,7 +282,9 @@ export default function PhotoUploadModal({ onClose }: Props) {
           {done ? (
             <div className="text-center py-12">
               <div className="text-4xl mb-4" style={{ color: "#e9c176" }}>✓</div>
-              <p className="font-song text-gold-200 text-sm mb-6">照片上传成功！</p>
+              <p className="font-song text-gold-200 text-sm mb-6">
+                {mediaType === "video" ? "视频上传成功！" : "照片上传成功！"}
+              </p>
               <button
                 onClick={onClose}
                 className="px-8 py-2.5 rounded text-sm font-song border border-gold-400/30 text-gold-200/70 hover:text-gold-200 hover:border-gold-400/50 transition-colors"
@@ -238,17 +296,19 @@ export default function PhotoUploadModal({ onClose }: Props) {
             <>
               {/* 名称 */}
               <div className="mb-4">
-                <label className="block font-song text-gold-200/60 text-sm mb-1.5">照片名称</label>
+                <label className="block font-song text-gold-200/60 text-sm mb-1.5">
+                  {mediaType === "video" ? "视频名称" : "照片名称"}
+                </label>
                 <input
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="输入照片名称"
+                  placeholder={mediaType === "video" ? "输入视频名称" : "输入照片名称"}
                   className="w-full px-4 py-2.5 rounded font-song text-sm border border-gold-400/20 bg-ink-900/60 text-gold-200 placeholder:text-gold-200/30 outline-none focus:border-gold-400/40"
                 />
               </div>
 
-              {/* 上传按钮 */}
+              {/* 上传按钮（未选择文件时显示） */}
               {!cropFile && !formSrc && (
                 <div className="mb-4">
                   <button
@@ -258,14 +318,20 @@ export default function PhotoUploadModal({ onClose }: Props) {
                     <svg className="w-10 h-10 text-gold-400/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
-                    <span className="font-song text-sm text-gold-200/40">点击选择图片</span>
-                    <span className="font-song text-xs text-gold-200/20">支持 JPG、PNG</span>
+                    <span className="font-song text-sm text-gold-200/40">点击选择文件</span>
+                    <span className="font-song text-xs text-gold-200/20">支持 JPG、PNG、MP4、WebM</span>
                   </button>
-                  <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
                 </div>
               )}
 
-              {/* 裁剪区域 */}
+              {/* 裁剪区域（仅图片） */}
               {cropFile && (
                 <div className="mb-4">
                   <label className="block font-song text-gold-200/60 text-sm mb-1.5">拖拽裁剪框调整区域</label>
@@ -275,7 +341,6 @@ export default function PhotoUploadModal({ onClose }: Props) {
                     style={{ height: 360, background: "#0a0806" }}
                   >
                     <img src={cropFile} onLoad={handleCropImgLoad} className="absolute inset-0 pointer-events-none" draggable={false} />
-                    {/* 裁剪框 + box-shadow 遮罩 */}
                     <div
                       className="absolute border-2 border-white/80"
                       style={{
@@ -325,8 +390,8 @@ export default function PhotoUploadModal({ onClose }: Props) {
                 </div>
               )}
 
-              {/* 已裁剪预览 */}
-              {formSrc && !cropFile && (
+              {/* 已裁剪预览（图片） */}
+              {formSrc && !cropFile && mediaType === "image" && (
                 <div className="mb-4">
                   <label className="block font-song text-gold-200/60 text-sm mb-1.5">
                     预览 {formRatio !== "free" && <span className="text-gold-400/70">· {formRatio}</span>}
@@ -336,12 +401,70 @@ export default function PhotoUploadModal({ onClose }: Props) {
                     <img src={formSrc} className="w-full h-full object-contain" alt="预览" />
                   </div>
                   <button
-                    onClick={() => { setFormSrc(""); setCropFile(null); }}
+                    onClick={clearSelection}
                     className="mt-2 text-xs font-song text-gold-200/40 hover:text-gold-200/70 transition-colors"
                   >
                     重新选择
                   </button>
                 </div>
+              )}
+
+              {/* 视频预览 + 封面选择 */}
+              {formSrc && mediaType === "video" && (
+                <div className="mb-4">
+                  <label className="block font-song text-gold-200/60 text-sm mb-1.5">视频预览</label>
+                  <div className="w-full rounded border border-gold-400/20 overflow-hidden bg-ink-900/40">
+                    <video
+                      src={formSrc}
+                      controls
+                      className="w-full max-h-64 object-contain"
+                    />
+                  </div>
+
+                  {/* 封面选择 */}
+                  <div className="flex items-center gap-3 mt-3">
+                    <button
+                      onClick={() => setShowCoverSelector(true)}
+                      className="px-4 py-2 rounded text-xs font-song border border-gold-400/30 text-gold-200/70 hover:text-gold-200 hover:border-gold-400/50 transition-colors"
+                    >
+                      {coverPreview ? "重新选择封面" : "选择视频封面"}
+                    </button>
+                    {coverPreview && (
+                      <div className="flex items-center gap-2">
+                        <img src={coverPreview} className="w-10 h-14 rounded object-cover border border-gold-400/20" alt="封面" />
+                        <button
+                          onClick={() => setCoverPreview("")}
+                          className="text-xs font-song text-gold-200/30 hover:text-red-400 transition-colors"
+                        >
+                          移除封面
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {coverPreview && (
+                    <p className="font-song text-xs text-gold-200/30 mt-1">已选择封面，将在照片墙中展示此图</p>
+                  )}
+
+                  <button
+                    onClick={clearSelection}
+                    className="mt-2 text-xs font-song text-gold-200/40 hover:text-gold-200/70 transition-colors"
+                  >
+                    重新选择
+                  </button>
+                </div>
+              )}
+
+              {/* 视频封面选择器 */}
+              {showCoverSelector && formSrc && (
+                <VideoCoverSelector
+                  videoUrl={formSrc}
+                  initialCover={coverPreview || undefined}
+                  onConfirm={(cover) => {
+                    setCoverPreview(cover);
+                    setShowCoverSelector(false);
+                  }}
+                  onCancel={() => setShowCoverSelector(false)}
+                />
               )}
 
               {/* 错误提示 */}
@@ -355,14 +478,14 @@ export default function PhotoUploadModal({ onClose }: Props) {
               <div className="flex gap-3 mt-2">
                 <button
                   onClick={handleSave}
-                  disabled={saving || !formName.trim() || !formSrc}
+                  disabled={!canSave}
                   className="flex-1 py-2.5 rounded text-sm font-song transition-all active:scale-[0.98]"
                   style={{
                     background: "linear-gradient(135deg, #c49b30, #e9c176)",
                     color: "#0f0a05",
                     fontWeight: 600,
-                    opacity: saving || !formName.trim() || !formSrc ? 0.5 : 1,
-                    cursor: saving || !formName.trim() || !formSrc ? "not-allowed" : "pointer",
+                    opacity: canSave ? 1 : 0.5,
+                    cursor: canSave ? "pointer" : "not-allowed",
                   }}
                 >
                   {saving ? "上传中..." : "上传"}

@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { members as initialMembers, Member, ROLE_TO_DB, DB_TO_ROLE } from "../data/members";
 import * as db from "../lib/supabase";
 import type { SupabasePhoto } from "../lib/supabase";
@@ -112,7 +112,7 @@ function toDB(m: Member): Omit<db.SupabaseMember, "id" | "created_at"> {
  *  照片墙数据类型
  * ================================================================ */
 
-export type WallPhoto = { src: string; title: string; ratio?: string };
+export type WallPhoto = { src: string; title: string; ratio?: string; media_type?: string; cover_url?: string };
 
 /* ================================================================
  *  App State
@@ -238,7 +238,7 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const photos = await db.fetchPhotos();
       set({
-        wallPhotos: photos.map(p => ({ src: p.src, title: p.name, ratio: p.ratio })),
+        wallPhotos: photos.map(p => ({ src: p.src, title: p.name, ratio: p.ratio, media_type: p.media_type, cover_url: p.cover_url })),
         wallLoading: false,
       });
     } catch {
@@ -277,7 +277,7 @@ export const useStore = create<AppState>((set, get) => ({
       if (photosResult.status === "fulfilled") {
         const photos = photosResult.value;
         set({
-          wallPhotos: photos.map(p => ({ src: p.src, title: p.name, ratio: p.ratio })),
+          wallPhotos: photos.map(p => ({ src: p.src, title: p.name, ratio: p.ratio, media_type: p.media_type, cover_url: p.cover_url })),
           wallLoading: false,
         });
       }
@@ -406,7 +406,7 @@ export const useStore = create<AppState>((set, get) => ({
         async () => {
           console.log("[Realtime] photo 变更，重新拉取...");
           const photos = await db.fetchPhotos();
-          const wallPhotos = photos.map((p: SupabasePhoto) => ({ src: p.src, title: p.name, ratio: p.ratio }));
+          const wallPhotos = photos.map((p: SupabasePhoto) => ({ src: p.src, title: p.name, ratio: p.ratio, media_type: p.media_type, cover_url: p.cover_url }));
           useStore.setState({ wallPhotos });
         }
       )

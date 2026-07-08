@@ -11,6 +11,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import LoadingOverlay from "./LoadingOverlay";
+import VideoCoverSelector from "./VideoCoverSelector";
 
 /* ================================================================
  *  照片墙管理弹窗
@@ -59,6 +60,10 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
   const [formName, setFormName] = useState("");
   const [formSrc, setFormSrc] = useState("");
   const [formRatio, setFormRatio] = useState("free");
+  const [mediaType, setMediaType] = useState<"image" | "video">("image");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState("");
+  const [showCoverSelector, setShowCoverSelector] = useState(false);
 
   // 裁剪
   const [cropFile, setCropFile] = useState<string | null>(null);
@@ -101,14 +106,30 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
 
   const filtered = photos.filter((p) => p.name.includes(search));
 
-  // ========== 裁剪逻辑 ==========
+  // ========== 文件选择 ==========
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    const url = URL.createObjectURL(files[0]);
-    setCropFile(url);
-    setFormSrc("");
-    setFormRatio("free");
+    const file = files[0];
+    const isVideo = file.type.startsWith("video/");
+
+    if (isVideo) {
+      // 视频：直接预览，跳过裁剪
+      setMediaType("video");
+      setVideoFile(file);
+      setFormSrc(URL.createObjectURL(file));
+      setFormRatio("free");
+      setCropFile(null);
+    } else {
+      // 图片：进入裁剪流程
+      setMediaType("image");
+      setVideoFile(null);
+      const url = URL.createObjectURL(file);
+      setCropFile(url);
+      setFormSrc("");
+      setFormRatio("free");
+    }
+    e.target.value = "";
   };
 
   const handleCropImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -240,6 +261,9 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
     setFormName(photo.name);
     setFormSrc(photo.src);
     setFormRatio(photo.ratio || "free");
+    setMediaType((photo.media_type as "image" | "video") || "image");
+    setVideoFile(null);
+    setCoverPreview(photo.cover_url || "");
     setMode("edit");
   };
 
@@ -250,9 +274,30 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
     setSaveError(null);
     try {
       let url = formSrc;
+      let coverUrl = coverPreview; // 默认保留已有封面
 
-      // 如果是新上传的图片（base64），上传到 Storage
-      if (formSrc.startsWith("data:")) {
+      if (mediaType === "video" && videoFile) {
+        // 视频：直接上传原始文件
+        const uploadedUrl = await uploadToStorage(videoFile, "member-photos", "wall-photos");
+        if (!uploadedUrl) {
+          setSaveError("上传失败，请稍后再试");
+          setSaving(false);
+          return;
+        }
+        url = uploadedUrl;
+
+        // 上传新封面（如果是新的 data URL）
+        if (coverPreview && coverPreview.startsWith("data:")) {
+          const coverRes = await fetch(coverPreview);
+          const coverBlob = await coverRes.blob();
+          const coverFile = new File([coverBlob], "cover.jpg", { type: "image/jpeg" });
+          const uploadedCover = await uploadToStorage(coverFile, "member-photos", "wall-covers");
+          if (uploadedCover) {
+            coverUrl = uploadedCover;
+          }
+        }
+      } else if (formSrc.startsWith("data:")) {
+        // 图片 base64：转 Blob 后上传
         const res = await fetch(formSrc);
         const blob = await res.blob();
         const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
@@ -266,26 +311,27 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
       }
 
       if (mode === "edit" && editingPhoto) {
-        // 编辑模式：更新现有照片
         await updatePhoto(editingPhoto.id, {
           name: formName.trim(),
           src: url,
-          ratio: formRatio,
+          ratio: mediaType === "video" ? "free" : formRatio,
+          media_type: mediaType,
+          cover_url: mediaType === "video" ? coverUrl : undefined,
         });
       } else {
-        // 添加模式：创建新照片
         await createPhoto({
           name: formName.trim(),
           src: url,
           sort_order: photos.length,
           is_active: true,
-          ratio: formRatio,
+          ratio: mediaType === "video" ? "free" : formRatio,
+          media_type: mediaType,
+          cover_url: mediaType === "video" ? coverUrl : undefined,
           uploader: currentUser?.name || "匿名",
           uploader_id: currentUser?.id,
         });
       }
 
-      // resetForm 会恢复 mode，useEffect 会自动加载对应数据
       resetForm();
     } catch (e) {
       setSaveError("操作失败: " + (e instanceof Error ? e.message : String(e)));
@@ -299,6 +345,10 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
     setFormName("");
     setFormSrc("");
     setFormRatio("free");
+    setMediaType("image");
+    setVideoFile(null);
+    setCoverPreview("");
+    setShowCoverSelector(false);
     setCropFile(null);
     setCropImg(null);
     setSaveError(null);
@@ -334,7 +384,13 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
       style={{ background: "rgba(0,0,0,0.85)" }}
       onClick={onClose}
     >
-      <LoadingOverlay show={saving} message={mode === "edit" ? "正在更新照片..." : "正在上传照片..."} />
+      <LoadingOverlay show={saving} message={
+        saving
+          ? mediaType === "video"
+            ? (mode === "edit" ? "正在更新视频..." : "正在上传视频...")
+            : (mode === "edit" ? "正在更新照片..." : "正在上传照片...")
+          : ""
+      } />
       <div
         className="relative w-full h-full max-w-[1400px] max-h-[90vh] mx-4 flex flex-col rounded-lg overflow-hidden"
         style={{ background: "linear-gradient(135deg, #1a1510, #0f0d0a)" }}
@@ -435,13 +491,13 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
                     <svg className="w-10 h-10 text-gold-400/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
-                    <span className="font-song text-sm text-gold-200/40">点击上传图片</span>
-                    <span className="font-song text-xs text-gold-200/20">支持 JPG、PNG</span>
+                    <span className="font-song text-sm text-gold-200/40">点击选择文件</span>
+                    <span className="font-song text-xs text-gold-200/20">支持 JPG、PNG、MP4、WebM</span>
                   </button>
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/*"
                     className="hidden"
                     onChange={handleFileChange}
                   />
@@ -520,17 +576,15 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
                 </div>
               )}
 
-              {/* 已裁剪预览（悬停显示操作） */}
-              {formSrc && !cropFile && (
+              {/* 图片预览（悬停显示操作） */}
+              {formSrc && !cropFile && mediaType === "image" && (
                 <div className="mb-4">
                   <label className="block font-song text-gold-200/60 text-sm mb-1.5">预览</label>
                   <div className="group relative w-full h-48 rounded border border-gold-400/20 overflow-hidden bg-ink-900/40 cursor-pointer">
                     <img src={formSrc} className="w-full h-full object-contain" alt="预览" />
-                    {/* 悬浮遮罩 + 操作按钮 */}
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                       <button
                         onClick={() => {
-                          // 加载当前图片到裁剪器
                           setCropFile(formSrc);
                           setFormSrc("");
                         }}
@@ -553,6 +607,60 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* 视频预览 + 封面选择 */}
+              {formSrc && mediaType === "video" && (
+                <div className="mb-4">
+                  <label className="block font-song text-gold-200/60 text-sm mb-1.5">视频预览</label>
+                  <div className="w-full rounded border border-gold-400/20 overflow-hidden bg-ink-900/40">
+                    <video src={formSrc} controls className="w-full max-h-64 object-contain" />
+                  </div>
+
+                  {/* 封面选择 */}
+                  <div className="flex items-center gap-3 mt-3">
+                    <button
+                      onClick={() => setShowCoverSelector(true)}
+                      className="px-4 py-2 rounded text-xs font-song border border-gold-400/30 text-gold-200/70 hover:text-gold-200 hover:border-gold-400/50 transition-colors"
+                    >
+                      {coverPreview ? "重新选择封面" : "选择视频封面"}
+                    </button>
+                    {coverPreview && (
+                      <div className="flex items-center gap-2">
+                        <img src={coverPreview} className="w-10 h-14 rounded object-cover border border-gold-400/20" alt="封面" />
+                        <button
+                          onClick={() => setCoverPreview("")}
+                          className="text-xs font-song text-gold-200/30 hover:text-red-400 transition-colors"
+                        >
+                          移除
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {coverPreview && (
+                    <p className="font-song text-xs text-gold-200/30 mt-1">已选择封面，将在照片墙中展示此图</p>
+                  )}
+
+                  <button
+                    onClick={() => { setFormSrc(""); setMediaType("image"); setVideoFile(null); setCoverPreview(""); }}
+                    className="mt-2 text-xs font-song text-gold-200/40 hover:text-gold-200/70 transition-colors"
+                  >
+                    重新选择
+                  </button>
+                </div>
+              )}
+
+              {/* 视频封面选择器 */}
+              {showCoverSelector && formSrc && (
+                <VideoCoverSelector
+                  videoUrl={formSrc}
+                  initialCover={coverPreview || undefined}
+                  onConfirm={(cover) => {
+                    setCoverPreview(cover);
+                    setShowCoverSelector(false);
+                  }}
+                  onCancel={() => setShowCoverSelector(false)}
+                />
               )}
 
               {/* 错误提示 */}
@@ -613,12 +721,37 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {filtered.map((p) => (
                     <div key={p.id} className="group relative">
-                      <div className="aspect-[4/3] rounded overflow-hidden border border-gold-400/10">
-                        <img
-                          src={p.src}
-                          alt={p.name}
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="aspect-[4/3] rounded overflow-hidden border border-gold-400/10 relative">
+                        {p.media_type === "video" && p.cover_url ? (
+                          <img
+                            src={p.cover_url}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : p.media_type === "video" ? (
+                          <video
+                            src={p.src}
+                            className="w-full h-full object-cover"
+                            preload="metadata"
+                            muted
+                          />
+                        ) : (
+                          <img
+                            src={p.src}
+                            alt={p.name}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                        {/* 视频播放图标 */}
+                        {p.media_type === "video" && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.55)" }}>
+                              <svg className="w-4 h-4 text-gold-200 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            </div>
+                          </div>
+                        )}
                       </div>
                       <p className="mt-1.5 font-song text-xs text-gold-200/60 truncate">{p.name}</p>
                       {p.uploader && (

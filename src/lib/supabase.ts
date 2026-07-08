@@ -116,6 +116,8 @@ export interface SupabasePhoto {
   sort_order: number;
   is_active: boolean;
   ratio?: string;  // "4:3" | "3:4" | "1:1" | "16:9" | "3:2"
+  media_type?: string;  // "image" | "video"
+  cover_url?: string;  // 视频封面图URL
   uploader?: string;  // 上传者姓名
   uploader_id?: number;  // 上传者ID
   created_at?: string;

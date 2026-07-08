@@ -62,7 +62,7 @@ function photoSize(ratio: string | undefined, idx: number, baseSize: number): { 
 }
 
 // 按比例排序：横版 → 方形 → 竖版，同类型内按比例值排列
-function sortPhotosByRatio(photos: { src: string; title: string; ratio?: string }[]) {
+function sortPhotosByRatio(photos: { src: string; title: string; ratio?: string; media_type?: string; cover_url?: string }[]) {
   return [...photos].sort((a, b) => {
     const ra = getRatioValue(a.ratio, 0);
     const rb = getRatioValue(b.ratio, 0);
@@ -132,7 +132,7 @@ export default function PhotoWall() {
   const hover = useRef(false);
   const lastX = useRef(0);
 
-  const [lb, setLb] = useState<{ s: string; t: string } | null>(null);
+  const [lb, setLb] = useState<{ s: string; t: string; isVideo?: boolean } | null>(null);
   const lbRef = useRef(false);
   const [showManager, setShowManager] = useState(false);
   const [managerDefaultMode, setManagerDefaultMode] = useState<"list" | "my-photos">("list");
@@ -166,7 +166,7 @@ export default function PhotoWall() {
     setWallReady(false);
 
     const { rows, baseSize, rowGap } = config;
-    const items: { el: HTMLDivElement; img: HTMLImageElement }[] = [];
+    const items: { el: HTMLDivElement; media: HTMLImageElement | HTMLVideoElement }[] = [];
 
     grid.forEach((cell, i) => {
       const photo = sortedPhotos[i % sortedPhotos.length];
@@ -194,18 +194,53 @@ export default function PhotoWall() {
       el.style.transform =
         `translate3d(${x - w / 2}px, ${y - h / 2}px, ${z}px) rotateY(${ry}deg) rotateZ(${tiltDeg}deg)`;
 
-      const img = document.createElement("img");
-      img.src = photo.src;
-      img.alt = photo.title;
-      img.loading = "lazy";
-      img.decoding = "async";
-      img.draggable = false;
+      const isVideo = photo.media_type === "video";
+      const hasCover = isVideo && photo.cover_url;
+      let media: HTMLImageElement | HTMLVideoElement;
 
-      img.onload = () => {
-        el.style.transition = "opacity 0.4s ease";
-        el.style.opacity = "1";
-      };
-      img.onerror = () => {
+      if (isVideo) {
+        // 视频：直接用 video 元素，自动播放
+        const vid = document.createElement("video");
+        vid.src = photo.src;
+        vid.preload = "auto";
+        vid.muted = true;
+        vid.loop = true;
+        vid.playsInline = true;
+        vid.autoplay = true;
+        vid.draggable = false;
+        vid.style.width = "100%";
+        vid.style.height = "100%";
+        vid.style.objectFit = "cover";
+        vid.style.pointerEvents = "none";
+        vid.dataset.pwVideo = "1";
+        if (hasCover) {
+          vid.poster = photo.cover_url!;
+        }
+        media = vid;
+      } else {
+        // 图片
+        const img = document.createElement("img");
+        img.src = photo.src;
+        img.alt = photo.title;
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.draggable = false;
+        media = img;
+      }
+
+      // 图片用 onload，视频用 onloadeddata
+      if (isVideo) {
+        (media as HTMLVideoElement).onloadeddata = () => {
+          el.style.transition = "opacity 0.4s ease";
+          el.style.opacity = "1";
+        };
+      } else {
+        media.onload = () => {
+          el.style.transition = "opacity 0.4s ease";
+          el.style.opacity = "1";
+        };
+      }
+      media.onerror = () => {
         el.style.transition = "opacity 0.3s ease";
         el.style.opacity = "0.5";
       };
@@ -216,12 +251,12 @@ export default function PhotoWall() {
 
       el.addEventListener("click", (e) => {
         e.stopPropagation();
-        setLb({ s: photo.src.replace("/400/400", "/900/900"), t: photo.title });
+        setLb({ s: photo.src, t: photo.title, isVideo });
         lbRef.current = true;
       });
 
-      el.append(img, lbl);
-      items.push({ el, img });
+      el.append(media, lbl);
+      items.push({ el, media });
     });
 
     // 批量插入
@@ -243,7 +278,13 @@ export default function PhotoWall() {
     requestAnimationFrame(batchAppend);
 
     return () => {
-      items.forEach(({ img }) => { img.onload = null; img.onerror = null; });
+      items.forEach(({ media }) => {
+        media.onload = null;
+        media.onerror = null;
+        if (media instanceof HTMLVideoElement) {
+          media.onloadeddata = null;
+        }
+      });
     };
   }, [grid, config, yOff, sortedPhotos]);
 
@@ -275,6 +316,18 @@ export default function PhotoWall() {
       animRef.current = requestAnimationFrame(animate);
     }
   }, [lb, animate]);
+
+  // 打开灯箱时暂停所有视频，关闭时恢复
+  useEffect(() => {
+    const sphere = sphereRef.current;
+    if (!sphere) return;
+    const videos = sphere.querySelectorAll<HTMLVideoElement>("video[data-pw-video]");
+    if (lb) {
+      videos.forEach(v => v.pause());
+    } else {
+      videos.forEach(v => v.play().catch(() => {}));
+    }
+  }, [lb]);
 
   // 鼠标交互
   const md = useCallback((e: React.MouseEvent) => {
@@ -406,7 +459,11 @@ export default function PhotoWall() {
       {lb && (
         <div className="pw-lb" onClick={() => { setLb(null); lbRef.current = false; }}>
           <div className="pw-lb-box" onClick={(e) => e.stopPropagation()}>
-            <img src={lb.s} alt={lb.t} draggable={false} />
+            {lb.isVideo ? (
+              <video src={lb.s} controls autoPlay className="pw-lb-video" style={{ maxWidth: "100%", maxHeight: "80vh", borderRadius: 8 }} />
+            ) : (
+              <img src={lb.s.replace("/400/400", "/900/900")} alt={lb.t} draggable={false} />
+            )}
             <span className="pw-lb-t">{lb.t}</span>
             <button className="pw-lb-dl" onClick={() => handleDownload(lb.s, lb.t)} title="下载">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
