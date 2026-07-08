@@ -20,6 +20,7 @@ import LoadingOverlay from "./LoadingOverlay";
 
 interface Props {
   onClose: () => void;
+  defaultMode?: "list" | "my-photos";
 }
 
 interface CropState {
@@ -29,7 +30,7 @@ interface CropState {
   h: number;
 }
 
-export default function PhotoManager({ onClose }: Props) {
+export default function PhotoManager({ onClose, defaultMode }: Props) {
   useBodyScrollLock(true);
   const { member: currentUser } = useAuth();
 
@@ -45,7 +46,7 @@ export default function PhotoManager({ onClose }: Props) {
     "快马加鞭赶来...",
     "御剑飞行中...",
   ][Math.floor(Math.random() * 7)]);
-  const [mode, setMode] = useState<"list" | "add" | "edit" | "my-photos">("list");
+  const [mode, setMode] = useState<"list" | "add" | "edit" | "my-photos">(defaultMode || "list");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
@@ -67,6 +68,7 @@ export default function PhotoManager({ onClose }: Props) {
   const cropStart = useRef({ mx: 0, my: 0, rect: cropRect });
   const cropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const prevModeRef = useRef<"list" | "my-photos">("list");
 
   // 权限判断
   const isAdmin = currentUser?.role === "社长" || currentUser?.role === "副社长" || currentUser?.role === "指挥";
@@ -87,12 +89,14 @@ export default function PhotoManager({ onClose }: Props) {
     setLoading(false);
   }, [currentUser?.id]);
 
+  // 只在 list / my-photos 模式下加载数据，edit / add 不触发
   useEffect(() => {
     if (mode === "my-photos") {
       loadMyPhotos();
-    } else {
+    } else if (mode === "list") {
       loadAll();
     }
+    // mode === "edit" || mode === "add" 时不加载，避免异步请求覆盖当前数据
   }, [mode, loadAll, loadMyPhotos]);
 
   const filtered = photos.filter((p) => p.name.includes(search));
@@ -231,6 +235,7 @@ export default function PhotoManager({ onClose }: Props) {
 
   // ========== 开始编辑 ==========
   const handleStartEdit = (photo: SupabasePhoto) => {
+    prevModeRef.current = mode === "edit" || mode === "add" ? prevModeRef.current : mode;
     setEditingPhoto(photo);
     setFormName(photo.name);
     setFormSrc(photo.src);
@@ -280,7 +285,7 @@ export default function PhotoManager({ onClose }: Props) {
         });
       }
 
-      await loadAll();
+      // resetForm 会恢复 mode，useEffect 会自动加载对应数据
       resetForm();
     } catch (e) {
       setSaveError("操作失败: " + (e instanceof Error ? e.message : String(e)));
@@ -289,7 +294,7 @@ export default function PhotoManager({ onClose }: Props) {
   };
 
   const resetForm = () => {
-    setMode("list");
+    setMode(prevModeRef.current);
     setEditingPhoto(null);
     setFormName("");
     setFormSrc("");
@@ -375,10 +380,19 @@ export default function PhotoManager({ onClose }: Props) {
             {/* 管理员显示"添加照片"按钮 */}
             {isAdmin && mode === "list" && (
               <button
-                onClick={() => setMode("add")}
+                onClick={() => { prevModeRef.current = mode; setMode("add"); }}
                 className="btn-ink px-4 py-1.5 rounded text-sm font-song active:scale-95"
               >
                 + 添加照片
+              </button>
+            )}
+            {/* 社员在"我的照片"模式下显示"上传照片"按钮 */}
+            {isMember && mode === "my-photos" && (
+              <button
+                onClick={() => { prevModeRef.current = mode; setMode("add"); }}
+                className="btn-ink px-4 py-1.5 rounded text-sm font-song active:scale-95"
+              >
+                + 上传照片
               </button>
             )}
             <button

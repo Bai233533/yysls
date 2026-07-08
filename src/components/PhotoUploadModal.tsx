@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { createPhoto, uploadToStorage } from "../lib/supabase";
 import { useStore } from "../store/useStore";
+import { useAuth } from "../contexts/AuthContext";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import LoadingOverlay from "./LoadingOverlay";
 
@@ -24,6 +25,7 @@ interface CropState {
 export default function PhotoUploadModal({ onClose }: Props) {
   useBodyScrollLock(true);
   const loadWallPhotos = useStore((s) => s.loadWallPhotos);
+  const { member: currentUser } = useAuth();
 
   const [formName, setFormName] = useState("");
   const [formSrc, setFormSrc] = useState("");
@@ -180,6 +182,8 @@ export default function PhotoUploadModal({ onClose }: Props) {
         sort_order: 0,
         is_active: true,
         ratio,
+        uploader: currentUser?.name || "匿名",
+        uploader_id: currentUser?.id,
       });
       if (!id) {
         setError("保存失败，请稍后再试");

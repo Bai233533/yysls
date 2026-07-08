@@ -122,7 +122,7 @@ function buildGrid(photoCount: number): Cell[] {
 
 export default function PhotoWall() {
   const wallPhotos = useStore((s) => s.wallPhotos);
-  const { showPhotoManager, canManagePhoto, isLoggedIn } = usePermission();
+  const { showPhotoManager, showUploadButton, showMyPhotosButton, isLoggedIn } = usePermission();
 
   const sphereRef = useRef<HTMLDivElement>(null);
   const animRef = useRef<number>(0);
@@ -135,6 +135,7 @@ export default function PhotoWall() {
   const [lb, setLb] = useState<{ s: string; t: string } | null>(null);
   const lbRef = useRef(false);
   const [showManager, setShowManager] = useState(false);
+  const [managerDefaultMode, setManagerDefaultMode] = useState<"list" | "my-photos">("list");
   const [showUpload, setShowUpload] = useState(false);
   const [wallReady, setWallReady] = useState(false);
 
@@ -331,9 +332,10 @@ export default function PhotoWall() {
         </div>
 
         {/* 操作按钮 */}
+        {/* 管理员：管理照片墙按钮 */}
         {showPhotoManager && (
           <button
-            onClick={() => setShowManager(true)}
+            onClick={() => { setManagerDefaultMode("list"); setShowManager(true); }}
             className="absolute top-[80px] right-10 z-20 px-6 py-2.5 rounded text-sm font-song active:scale-95 transition-all"
             style={{
               background: "rgba(0,0,0,0.7)",
@@ -345,19 +347,36 @@ export default function PhotoWall() {
             管理照片墙
           </button>
         )}
-        {!showPhotoManager && isLoggedIn && (
-          <button
-            onClick={() => setShowUpload(true)}
-            className="absolute top-[80px] right-10 z-20 px-6 py-2.5 rounded text-sm font-song active:scale-95 transition-all"
-            style={{
-              background: "rgba(0,0,0,0.7)",
-              border: "1px solid rgba(255,255,255,0.25)",
-              color: "#fff",
-              backdropFilter: "blur(8px)",
-            }}
-          >
-            上传照片
-          </button>
+        {/* 社员：上传照片 + 我的照片按钮 */}
+        {!showPhotoManager && showUploadButton && (
+          <div className="absolute top-[80px] right-10 z-20 flex gap-2">
+            {showMyPhotosButton && (
+              <button
+                onClick={() => { setManagerDefaultMode("my-photos"); setShowManager(true); }}
+                className="px-5 py-2.5 rounded text-sm font-song active:scale-95 transition-all"
+                style={{
+                  background: "rgba(0,0,0,0.7)",
+                  border: "1px solid rgba(255,255,255,0.25)",
+                  color: "#fff",
+                  backdropFilter: "blur(8px)",
+                }}
+              >
+                我的照片
+              </button>
+            )}
+            <button
+              onClick={() => setShowUpload(true)}
+              className="px-5 py-2.5 rounded text-sm font-song active:scale-95 transition-all"
+              style={{
+                background: "rgba(0,0,0,0.7)",
+                border: "1px solid rgba(255,255,255,0.25)",
+                color: "#fff",
+                backdropFilter: "blur(8px)",
+              }}
+            >
+              上传照片
+            </button>
+          </div>
         )}
 
         {/* 桶形球体 */}
@@ -405,7 +424,7 @@ export default function PhotoWall() {
         </div>
       )}
 
-      {showManager && <PhotoManager onClose={() => setShowManager(false)} />}
+      {showManager && <PhotoManager onClose={() => setShowManager(false)} defaultMode={managerDefaultMode} />}
       {showUpload && <PhotoUploadModal onClose={() => setShowUpload(false)} />}
     </>
   );

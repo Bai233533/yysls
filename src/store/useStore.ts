@@ -351,8 +351,23 @@ export const useStore = create<AppState>((set, get) => ({
     const success = await db.updateMember(id, dbData);
     if (!success) {
       console.error("[Store] 更新成员到数据库失败, id:", id);
+      return false;
     }
-    return success;
+    // 更新成功后，重新从云端拉取最新数据确保一致性
+    // 延迟1秒等待数据库写入完成
+    setTimeout(async () => {
+      try {
+        const cloudMembers = await db.fetchAll();
+        if (cloudMembers.length > 0) {
+          const members = cloudMembers.map(fromDB);
+          useStore.setState({ members });
+          saveLocal(members);
+        }
+      } catch (e) {
+        console.error("[Store] 更新后重新拉取失败:", e);
+      }
+    }, 1000);
+    return true;
   },
 
   deleteMember: (id) =>

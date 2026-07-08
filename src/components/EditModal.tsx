@@ -445,13 +445,12 @@ export default function EditModal() {
           detailMedia1Type: result1.type, detailMedia2Type: result2.type, detailMedia3Type: result3.type,
           password: editingMember.password || "123456",
         });
-        if (success) {
-          setEditingMember(null);
-        } else {
-          setUploadError("保存到数据库失败，请重试");
-          setSaving(false);
-          return;
-        }
+        if (!success) {
+           setUploadError("保存到数据库失败，请重试");
+           setSaving(false);
+           return;
+         }
+         setEditingMember(null);
       }
     } finally {
       setUploading(false);
@@ -521,7 +520,7 @@ export default function EditModal() {
                 <label className="block text-xs font-song text-ink-600 mb-1.5 tracking-wide">称号</label>
                 <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
                   className="w-full px-3 py-2 rounded border border-gold-400/20 text-sm text-ink-800 font-song bg-rice-50 focus:outline-none focus:border-gold-400 transition-all"
-                  placeholder="输入称号（可选，社长/副社长设置）" />
+                  placeholder="输入称号，自己设置" />
               </div>
               <div>
                 <label className="block text-xs font-song text-ink-600 mb-1.5 tracking-wide">个性签名</label>

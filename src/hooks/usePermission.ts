@@ -35,18 +35,22 @@ export function usePermission() {
     canViewPhotos: true,
     /** 可以上传照片到照片墙 (V1, V2, V3, V4) */
     canUploadPhoto: level <= 4,
-    /** 可以编辑照片信息 (V1, V2, V3) */
-    canEditPhoto: level <= 3,
-    /** 可以删除照片 (V1, V2, V3) */
-    canDeletePhoto: level <= 3,
+    /** 可以编辑所有照片 (V1, V2, V3) */
+    canEditAllPhotos: level <= 3,
+    /** 可以删除所有照片 (V1, V2, V3) */
+    canDeleteAllPhotos: level <= 3,
+    /** 可以管理自己的照片 (V4 社员) */
+    canManageOwnPhotos: level === 4,
     /** 可以下载照片（所有人） */
     canDownloadPhoto: true,
 
     // === UI 显示 ===
-    /** 显示管理照片墙按钮 (V1, V2, V3) */
+    /** 显示管理照片墙按钮 - 管理员管理所有照片 (V1, V2, V3) */
     showPhotoManager: level <= 3,
-    /** 可以管理照片墙（增删改） (V1, V2, V3) */
-    canManagePhoto: level <= 3,
+    /** 显示上传照片按钮 (V1, V2, V3, V4) */
+    showUploadButton: level <= 4,
+    /** 显示我的照片按钮 (V4 社员) */
+    showMyPhotosButton: level === 4,
     /** 显示添加成员按钮 (V1, V2, V3) */
     showAddMember: level <= 3,
     /** 显示卡片编辑/删除按钮 (V1, V2) */
