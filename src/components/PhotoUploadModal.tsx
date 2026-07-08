@@ -35,6 +35,7 @@ export default function PhotoUploadModal({ onClose }: Props) {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string>(""); // 视频封面
   const [showCoverSelector, setShowCoverSelector] = useState(false);
+  const [videoRatio, setVideoRatio] = useState("original"); // 视频展示比例
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -47,6 +48,7 @@ export default function PhotoUploadModal({ onClose }: Props) {
   const cropStart = useRef({ mx: 0, my: 0, rect: cropRect });
   const cropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const originalFileUrlRef = useRef<string | null>(null); // 原始图片URL，用于重新裁剪
 
   // ========== 文件选择 ==========
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -66,6 +68,7 @@ export default function PhotoUploadModal({ onClose }: Props) {
       setMediaType("image");
       setVideoFile(null);
       const url = URL.createObjectURL(file);
+      originalFileUrlRef.current = url; // 保存原始URL
       setCropFile(url);
       setFormSrc("");
       setFormRatio("free");
@@ -225,6 +228,7 @@ export default function PhotoUploadModal({ onClose }: Props) {
         ratio: mediaType === "video" ? "free" : formRatio,
         media_type: mediaType,
         cover_url: coverUrlFinal || undefined,
+        video_ratio: mediaType === "video" ? videoRatio : undefined,
         uploader: currentUser?.name || "匿名",
         uploader_id: currentUser?.id,
       });
@@ -248,8 +252,10 @@ export default function PhotoUploadModal({ onClose }: Props) {
     setMediaType("image");
     setVideoFile(null);
     setCoverPreview("");
+    setVideoRatio("original");
     setCropFile(null);
     setCropImg(null);
+    originalFileUrlRef.current = null;
   };
 
   const canSave = formName.trim() && formSrc && !saving;
@@ -321,13 +327,6 @@ export default function PhotoUploadModal({ onClose }: Props) {
                     <span className="font-song text-sm text-gold-200/40">点击选择文件</span>
                     <span className="font-song text-xs text-gold-200/20">支持 JPG、PNG、MP4、WebM</span>
                   </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,video/*"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
                 </div>
               )}
 
@@ -409,7 +408,7 @@ export default function PhotoUploadModal({ onClose }: Props) {
                 </div>
               )}
 
-              {/* 视频预览 + 封面选择 */}
+              {/* 视频预览 + 封面选择 + 比例选择 */}
               {formSrc && mediaType === "video" && (
                 <div className="mb-4">
                   <label className="block font-song text-gold-200/60 text-sm mb-1.5">视频预览</label>
@@ -419,6 +418,32 @@ export default function PhotoUploadModal({ onClose }: Props) {
                       controls
                       className="w-full max-h-64 object-contain"
                     />
+                  </div>
+
+                  {/* 展示比例选择 */}
+                  <div className="mt-3">
+                    <label className="block font-song text-gold-200/60 text-xs mb-1.5">展示比例</label>
+                    <div className="flex flex-wrap gap-2">
+                      {([
+                        { value: "original", label: "原始比例" },
+                        { value: "3:4", label: "3:4" },
+                        { value: "1:1", label: "1:1" },
+                        { value: "16:9", label: "16:9" },
+                        { value: "4:3", label: "4:3" },
+                      ]).map((r) => (
+                        <button
+                          key={r.value}
+                          onClick={() => setVideoRatio(r.value)}
+                          className="px-3 py-1 rounded-full text-xs font-song transition-all"
+                          style={videoRatio === r.value
+                            ? { background: "linear-gradient(135deg, #c49b30, #e9c176)", color: "#0f0a05", fontWeight: 600 }
+                            : { border: "1px solid rgba(193,155,77,0.3)", color: "rgba(233,193,118,0.6)" }
+                          }
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* 封面选择 */}
@@ -473,6 +498,15 @@ export default function PhotoUploadModal({ onClose }: Props) {
                   {error}
                 </div>
               )}
+
+              {/* 隐藏的文件选择器（始终在 DOM 中） */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
 
               {/* 操作按钮 */}
               <div className="flex gap-3 mt-2">

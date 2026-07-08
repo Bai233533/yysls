@@ -8,6 +8,7 @@ import {
   uploadToStorage,
   SupabasePhoto,
 } from "../lib/supabase";
+import { useStore } from "../store/useStore";
 import { useAuth } from "../contexts/AuthContext";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import LoadingOverlay from "./LoadingOverlay";
@@ -74,13 +75,32 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
   const cropRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const prevModeRef = useRef<"list" | "my-photos">("list");
+  const originalFileUrlRef = useRef<string | null>(null); // 原始图片URL，用于重新裁剪
 
   // 权限判断
   const isAdmin = currentUser?.role === "社长" || currentUser?.role === "副社长" || currentUser?.role === "指挥";
   const isMember = currentUser?.role === "社员";
 
   const loadAll = useCallback(async () => {
-    setLoading(true);
+    // 先用 store 中已预加载的照片数据（ instantly available ）
+    const cached = useStore.getState().wallPhotos;
+    if (cached.length > 0) {
+      // 将 WallPhoto 转为 SupabasePhoto 格式，id 用索引代替（列表展示够用）
+      const quick: SupabasePhoto[] = cached.map((p, i) => ({
+        id: i + 1,
+        name: p.title,
+        src: p.src,
+        sort_order: i,
+        is_active: true,
+        ratio: p.ratio,
+        media_type: p.media_type,
+        cover_url: p.cover_url,
+        video_ratio: p.videoRatio,
+      }));
+      setPhotos(quick);
+      setLoading(false);
+    }
+    // 后台获取完整数据（包含 id、uploader_id 等用于编辑）
     const data = await fetchAllPhotos();
     setPhotos(data);
     setLoading(false);
@@ -125,6 +145,7 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
       setMediaType("image");
       setVideoFile(null);
       const url = URL.createObjectURL(file);
+      originalFileUrlRef.current = url; // 保存原始URL
       setCropFile(url);
       setFormSrc("");
       setFormRatio("free");
@@ -264,6 +285,7 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
     setMediaType((photo.media_type as "image" | "video") || "image");
     setVideoFile(null);
     setCoverPreview(photo.cover_url || "");
+    originalFileUrlRef.current = photo.src; // 编辑时保存原始URL
     setMode("edit");
   };
 
@@ -350,6 +372,7 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
     setCoverPreview("");
     setShowCoverSelector(false);
     setCropFile(null);
+    originalFileUrlRef.current = null;
     setCropImg(null);
     setSaveError(null);
   };
@@ -494,13 +517,6 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
                     <span className="font-song text-sm text-gold-200/40">点击选择文件</span>
                     <span className="font-song text-xs text-gold-200/20">支持 JPG、PNG、MP4、WebM</span>
                   </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*,video/*"
-                    className="hidden"
-                    onChange={handleFileChange}
-                  />
                 </div>
               )}
 
@@ -584,8 +600,22 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
                     <img src={formSrc} className="w-full h-full object-contain" alt="预览" />
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                       <button
-                        onClick={() => {
-                          setCropFile(formSrc);
+                        onClick={async () => {
+                          // 使用原始图片重新裁剪
+                          const origUrl = originalFileUrlRef.current || formSrc;
+                          if (origUrl && !origUrl.startsWith("blob:") && !origUrl.startsWith("data:")) {
+                            // 远程图片：先 fetch 为 blob 避免 CORS 问题
+                            try {
+                              const res = await fetch(origUrl);
+                              const blob = await res.blob();
+                              const localUrl = URL.createObjectURL(blob);
+                              setCropFile(localUrl);
+                            } catch {
+                              setCropFile(origUrl);
+                            }
+                          } else {
+                            setCropFile(origUrl);
+                          }
                           setFormSrc("");
                         }}
                         className="flex items-center gap-2 px-4 py-2 rounded text-sm font-song border border-gold-400/50 text-gold-200 hover:bg-gold-400/20 backdrop-blur-sm transition-all"
@@ -669,6 +699,15 @@ export default function PhotoManager({ onClose, defaultMode }: Props) {
                   {saveError}
                 </div>
               )}
+
+              {/* 隐藏的文件选择器（始终在 DOM 中） */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleFileChange}
+              />
 
               {/* 操作按钮 */}
               <div className="flex gap-3">

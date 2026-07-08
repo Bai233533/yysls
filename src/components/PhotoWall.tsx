@@ -134,6 +134,7 @@ export default function PhotoWall() {
 
   const [lb, setLb] = useState<{ s: string; t: string; isVideo?: boolean } | null>(null);
   const lbRef = useRef(false);
+  const currentHoverVideo = useRef<HTMLVideoElement | null>(null);
   const [showManager, setShowManager] = useState(false);
   const [managerDefaultMode, setManagerDefaultMode] = useState<"list" | "my-photos">("list");
   const [showUpload, setShowUpload] = useState(false);
@@ -198,8 +199,8 @@ export default function PhotoWall() {
       const hasCover = isVideo && photo.cover_url;
       let media: HTMLImageElement | HTMLVideoElement;
 
-      if (isVideo) {
-        // 视频：直接用 video 元素，自动播放
+      if (isVideo && !hasCover) {
+        // 无封面视频：用 video 元素，加载后自动播放
         const vid = document.createElement("video");
         vid.src = photo.src;
         vid.preload = "auto";
@@ -210,17 +211,20 @@ export default function PhotoWall() {
         vid.draggable = false;
         vid.style.width = "100%";
         vid.style.height = "100%";
-        vid.style.objectFit = "cover";
+        vid.style.objectFit = "contain";
+        vid.style.backgroundColor = "#0a0a0a";
         vid.style.pointerEvents = "none";
         vid.dataset.pwVideo = "1";
-        if (hasCover) {
-          vid.poster = photo.cover_url!;
-        }
+        // 加载完成后自动播放
+        vid.addEventListener("loadeddata", () => {
+          vid.currentTime = 0.1;
+          vid.play().catch(() => {});
+        }, { once: true });
         media = vid;
       } else {
-        // 图片
+        // 图片 或 有封面的视频：用 img 元素
         const img = document.createElement("img");
-        img.src = photo.src;
+        img.src = hasCover ? photo.cover_url! : photo.src;
         img.alt = photo.title;
         img.loading = "lazy";
         img.decoding = "async";
@@ -228,18 +232,10 @@ export default function PhotoWall() {
         media = img;
       }
 
-      // 图片用 onload，视频用 onloadeddata
-      if (isVideo) {
-        (media as HTMLVideoElement).onloadeddata = () => {
-          el.style.transition = "opacity 0.4s ease";
-          el.style.opacity = "1";
-        };
-      } else {
-        media.onload = () => {
-          el.style.transition = "opacity 0.4s ease";
-          el.style.opacity = "1";
-        };
-      }
+      media.onload = () => {
+        el.style.transition = "opacity 0.4s ease";
+        el.style.opacity = "1";
+      };
       media.onerror = () => {
         el.style.transition = "opacity 0.3s ease";
         el.style.opacity = "0.5";
@@ -278,13 +274,7 @@ export default function PhotoWall() {
     requestAnimationFrame(batchAppend);
 
     return () => {
-      items.forEach(({ media }) => {
-        media.onload = null;
-        media.onerror = null;
-        if (media instanceof HTMLVideoElement) {
-          media.onloadeddata = null;
-        }
-      });
+      items.forEach(({ media }) => { media.onload = null; media.onerror = null; });
     };
   }, [grid, config, yOff, sortedPhotos]);
 
@@ -317,17 +307,46 @@ export default function PhotoWall() {
     }
   }, [lb, animate]);
 
-  // 打开灯箱时暂停所有视频，关闭时恢复
+  // 视频悬停自动播放：用 pointermove + elementsFromPoint 检测鼠标下的视频
   useEffect(() => {
-    const sphere = sphereRef.current;
-    if (!sphere) return;
-    const videos = sphere.querySelectorAll<HTMLVideoElement>("video[data-pw-video]");
-    if (lb) {
-      videos.forEach(v => v.pause());
-    } else {
-      videos.forEach(v => v.play().catch(() => {}));
-    }
-  }, [lb]);
+    const section = document.getElementById("photowall");
+    if (!section) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (lbRef.current || drag.current) return;
+      const elements = document.elementsFromPoint(e.clientX, e.clientY);
+      const videoEl = elements.find((el): el is HTMLVideoElement =>
+        el instanceof HTMLVideoElement && el.dataset.pwVideo === "1"
+      );
+
+      if (videoEl && videoEl !== currentHoverVideo.current) {
+        // 移入新视频：暂停旧的，播放新的
+        if (currentHoverVideo.current && currentHoverVideo.current !== videoEl) {
+          currentHoverVideo.current.pause();
+        }
+        currentHoverVideo.current = videoEl;
+        videoEl.play().catch(() => {});
+      } else if (!videoEl && currentHoverVideo.current) {
+        // 移出所有视频：暂停
+        currentHoverVideo.current.pause();
+        currentHoverVideo.current = null;
+      }
+    };
+
+    const handlePointerLeave = () => {
+      if (currentHoverVideo.current) {
+        currentHoverVideo.current.pause();
+        currentHoverVideo.current = null;
+      }
+    };
+
+    section.addEventListener("pointermove", handlePointerMove);
+    section.addEventListener("pointerleave", handlePointerLeave);
+    return () => {
+      section.removeEventListener("pointermove", handlePointerMove);
+      section.removeEventListener("pointerleave", handlePointerLeave);
+    };
+  }, []);
 
   // 鼠标交互
   const md = useCallback((e: React.MouseEvent) => {
