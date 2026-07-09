@@ -75,11 +75,11 @@ export default function MemberDetailModal() {
         requestAnimationFrame(() => setCardEntered(true));
       });
 
-      // 预加载下一个视频（如果有）
+      // 预加载下一个视频（移动端只加载元数据，桌面端加载全部）
       if (mediaList.length > 1 && mediaList[1].type === "video") {
         const preloadVideo = document.createElement("video");
         preloadVideo.src = mediaList[1].url;
-        preloadVideo.preload = "auto";
+        preloadVideo.preload = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? "metadata" : "auto";
         preloadVideo.muted = true;
       }
     }
@@ -98,12 +98,12 @@ export default function MemberDetailModal() {
     v.addEventListener("timeupdate", onTimeUpdate);
     v.play().catch(() => {});
 
-    // 预加载下一个媒体（如果是视频）
+    // 预加载下一个媒体（如果是视频，移动端只加载元数据）
     const nextIndex = (mediaIndex + 1) % mediaList.length;
     if (nextIndex !== mediaIndex && mediaList[nextIndex]?.type === "video") {
       const preloadVideo = document.createElement("video");
       preloadVideo.src = mediaList[nextIndex].url;
-      preloadVideo.preload = "auto";
+      preloadVideo.preload = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? "metadata" : "auto";
       preloadVideo.muted = true;
     }
 
@@ -157,6 +157,38 @@ export default function MemberDetailModal() {
     window.addEventListener("mouseup", onWindowUp);
     e.preventDefault();
   }, []);
+
+  /* 触摸事件：移动端拖拽旋转 */
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    isDragging.current = true;
+    startX.current = touch.clientX;
+    startY.current = touch.clientY;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    if (cardRef.current) {
+      cardRef.current.style.transition = "none";
+    }
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!isDragging.current || !cardRef.current) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - startX.current;
+    const dy = touch.clientY - startY.current;
+    rotY.current = Math.max(-MAX_Y, Math.min(MAX_Y, dx * SENS_Y));
+    rotX.current = Math.max(-MAX_X, Math.min(MAX_X, -dy * SENS_X));
+    applyRot();
+    e.preventDefault();
+  }, [applyRot]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (!isDragging.current) return;
+    isDragging.current = false;
+    if (cardRef.current) {
+      cardRef.current.style.transition = "transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)";
+    }
+    bounceBack();
+  }, [bounceBack]);
 
   /* 全局鼠标移动（按住后移出卡片也能旋转） */
   const onWindowMove = useCallback((e: MouseEvent) => {
@@ -216,6 +248,7 @@ export default function MemberDetailModal() {
         className="relative z-[105] w-[300px] sm:w-[340px] aspect-[3/4] rounded overflow-hidden cursor-grab active:cursor-grabbing"
         style={{
           boxShadow: "0 0 0 1px rgba(193,155,77,0.35), 0 0 60px rgba(193,155,77,0.25), 0 25px 80px rgba(0,0,0,0.6)",
+          WebkitTransformStyle: "preserve-3d",
           transformStyle: "preserve-3d",
           willChange: "transform",
           transition: "transform 0.6s cubic-bezier(0.15, 0.85, 0.25, 1), opacity 0.15s ease",
@@ -224,6 +257,9 @@ export default function MemberDetailModal() {
             : "perspective(1000px) rotateY(360deg) scale(0.5)",
         }}
         onMouseDown={handleDown}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {/* Background Media (photo or video) */}
         {currentMedia?.type === "video" ? (

@@ -423,14 +423,17 @@ html, body, #root {
 
 /* ===== 3D 球形照片墙 ===== */
 .pw-wrap {
-  width: 1100px;
-  height: 520px;
+  width: min(1100px, 92vw);
+  height: min(520px, 55vh);
+  -webkit-perspective: 1000px;
   perspective: 1000px;
+  -webkit-perspective-origin: 50% 50%;
   perspective-origin: 50% 50%;
   position: relative;
   z-index: 10;
   cursor: grab;
   contain: layout style;
+  touch-action: pan-y;
 }
 .pw-wrap:active { cursor: grabbing; }
 
@@ -438,6 +441,7 @@ html, body, #root {
   width: 100%;
   height: 100%;
   position: relative;
+  -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
   will-change: transform;
 }
@@ -447,10 +451,12 @@ html, body, #root {
   position: absolute;
   top: 50%;
   left: 50%;
+  -webkit-transform-style: preserve-3d;
   transform-style: preserve-3d;
   border-radius: 14px;
   overflow: hidden;
   cursor: pointer;
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   border: 1.5px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 2px 8px rgba(0,0,0,0.6);

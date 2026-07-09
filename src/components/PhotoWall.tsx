@@ -20,6 +20,7 @@ const AUTO_SPEED = 0.03;      // 自动旋转速度（度/帧）
 const FRICTION = 0.94;        // 惯性衰减
 const DRAG_SENS = 0.25;       // 拖拽灵敏度
 const BATCH_SIZE = 20;        // 每帧批量DOM数量
+const BATCH_SIZE_MOBILE = 8;  // 移动端每帧批量数量（减少卡顿）
 
 // 自适应配置
 function getAdaptiveConfig(count: number) {
@@ -255,10 +256,12 @@ export default function PhotoWall() {
       items.push({ el, media });
     });
 
-    // 批量插入
+    // 批量插入（移动端每批更少，减少卡顿）
+    const isMob = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const batchSize = isMob ? BATCH_SIZE_MOBILE : BATCH_SIZE;
     let idx = 0;
     const batchAppend = () => {
-      const end = Math.min(idx + BATCH_SIZE, items.length);
+      const end = Math.min(idx + batchSize, items.length);
       const frag = document.createDocumentFragment();
       for (let i = idx; i < end; i++) {
         frag.appendChild(items[i].el);
@@ -369,6 +372,27 @@ export default function PhotoWall() {
   const me = useCallback(() => { hover.current = true; }, []);
   const ml = useCallback(() => { hover.current = false; drag.current = false; }, []);
 
+  /* 触摸事件：移动端拖拽旋转 */
+  const ts = useCallback((e: React.TouchEvent) => {
+    if (lbRef.current) return;
+    drag.current = true;
+    velY.current = 0;
+    lastX.current = e.touches[0].clientX;
+    e.preventDefault();
+  }, []);
+
+  const tm = useCallback((e: React.TouchEvent) => {
+    if (!drag.current) return;
+    const x = e.touches[0].clientX;
+    const dx = x - lastX.current;
+    lastX.current = x;
+    rotY.current += dx * DRAG_SENS;
+    velY.current = dx * DRAG_SENS;
+    e.preventDefault();
+  }, []);
+
+  const te = useCallback(() => { drag.current = false; }, []);
+
   useEffect(() => {
     const u = () => { drag.current = false; };
     window.addEventListener("mouseup", u);
@@ -459,6 +483,10 @@ export default function PhotoWall() {
           onMouseUp={mu}
           onMouseEnter={me}
           onMouseLeave={ml}
+          onTouchStart={ts}
+          onTouchMove={tm}
+          onTouchEnd={te}
+          style={{ touchAction: "pan-y" }}
         >
           <div ref={sphereRef} className="pw-sphere" />
         </div>
